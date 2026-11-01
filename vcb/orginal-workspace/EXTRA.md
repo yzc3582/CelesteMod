@@ -6,6 +6,8 @@ VS Code
 
 ILSpy（C:\Users\Lenovo\AppData\Local\Programs\ILSpy）
 
+ilspycmd
+
 dnSpyEx（D:\yzc3582\apps\green\dnSpy）
 
 Saladim.CelesteModTemplate（而非原版）+ dotnet new sapcelestemod -n VerticalCornerBoost
