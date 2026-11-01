@@ -6,14 +6,15 @@
 - **English**: Vertical Corner Boost
 - **代号 / 内部命名**: `VerticalCornerBoost`（旧分支曾用 `Corner Hop Assist`，已弃用）
 - **类型**: Celeste Everest 代码 Mod，**不添加任何新实体**，只注入玩家移动逻辑。
-- **目标游戏**: Celeste (PC) + Everest
+- **目标游戏**: Celeste (PC) + Everest（注：路径见目录下 `Celeste.txt`）
+- 更多额外内容见目录下 `EXTRA.md`
 
 ## 一句话机制
 
 当玩家在**任意来源**的向上运动中（爬墙、CB、抓墙跳、反墙跳蹭墙角等），
 空间上处于“**贴着墙且墙的顶端就在头顶附近**”的墙角状态时，
 自动向 `Player.Speed.Y` 注入原版 `ClimbHop` 的纵向速度。
-**不依赖 `StateMachine`，不依赖 `ClimbCheck()`，不依赖抓墙/抓墙跳是否被变体禁用。**
+**不依赖 `StateMachine`，不依赖 `ClimbCheck()`，不依赖抓墙/抓墙跳是否被 ExtendedVarients 禁用。**
 
 ## 硬性行为约束（不可违反）
 
