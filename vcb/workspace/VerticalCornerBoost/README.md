@@ -11,17 +11,19 @@ Celeste (Everest) 代码 Mod。当玩家在**任意来源的向上运动中**、
 
 ## 开关
 
-- Mod 选项：`Enable Vertical Corner Boost`（启用机制）、`Show submenu in pause menu`（暂停菜单是否显示子菜单）
+- Mod 选项：`Enable Vertical Corner Boost`（启用机制）、`Show submenu in pause menu`（暂停菜单是否显示子菜单）、
+  `Speed preset`（速度档位）、`Custom speed`（自定义速度，填正数）、`Limit custom speed`（是否限制上限，默认开）
 - 暂停菜单：`Vertical Corner Boost` 子菜单内的 `Enabled` 开关，与 Mod 选项共用同一个 `Settings.Enabled`
 
-## 手感调节（开发者）
+## 手感调节
 
-速度数值只有一处，改完重新 `publish` 即可：
+内置档位：`Vanilla`（-120，与原版 ClimbHop 等值）/ `Strong`（-160）/ `VeryStrong`（-200）/ `Custom`。
 
-```csharp
-// Source/CornerBoostLogic.cs
-public const float ClimbHopYSpeed = -120f;   // 原版 ClimbHop 的值
-```
+- 选 `Custom` 时在 `Custom speed` 里填**正数**（例如 160），程序会自动转成向上速度（-160）；填错或 ≤0 退回原版值。
+- `Limit custom speed` 默认开启，把上限压在 1000 px/s；关掉则不设上限（不推荐，可能出现穿墙观感或卡顿）。
+  输入框本身最多 6 个字符，所以不会出现天文数字。
+- `Vanilla` 档的 -120 是**运行时**从游戏里反射读 `Player.ClimbHopY` 拿到的（读不到才用 -120 兜底），
+  启动时会把读到的值写进 `log.txt`。这样 Celeste/Everest 将来改了常量，本 Mod 会自动跟上。
 
 `Speed.Y` 是像素/秒，`Gravity = 900`，额外上升高度约为 `v² / (2g)`：
 

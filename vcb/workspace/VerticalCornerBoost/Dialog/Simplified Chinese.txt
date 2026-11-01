@@ -4,3 +4,11 @@ modoptions_verticalcornerboostmodule_showpausemenusubmenu=在暂停菜单中显�
 
 VCB_MENU_TITLE=纵向抓角加速
 VCB_MENU_TOGGLE=启用
+
+modoptions_verticalcornerboostmodule_preset=速度档位
+modoptions_verticalcornerboostmodule_preset_vanilla=原版（-120）
+modoptions_verticalcornerboostmodule_preset_strong=有力气（-160）
+modoptions_verticalcornerboostmodule_preset_verystrong=很有力气（-200）
+modoptions_verticalcornerboostmodule_preset_custom=自定义
+modoptions_verticalcornerboostmodule_customspeed=自定义速度（填正数）
+modoptions_verticalcornerboostmodule_limitcustomspeed=限制自定义速度上限（关闭不推荐）

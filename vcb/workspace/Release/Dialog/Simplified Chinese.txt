@@ -1,0 +1,6 @@
+modoptions_verticalcornerboostmodule_title=纵向抓角加速
+modoptions_verticalcornerboostmodule_enabled=启用纵向抓角加速
+modoptions_verticalcornerboostmodule_showpausemenusubmenu=在暂停菜单中显示子菜单
+
+VCB_MENU_TITLE=纵向抓角加速
+VCB_MENU_TOGGLE=启用

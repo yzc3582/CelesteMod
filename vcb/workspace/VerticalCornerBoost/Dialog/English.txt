@@ -4,3 +4,11 @@ modoptions_verticalcornerboostmodule_showpausemenusubmenu=Show submenu in pause 
 
 VCB_MENU_TITLE=Vertical Corner Boost
 VCB_MENU_TOGGLE=Enabled
+
+modoptions_verticalcornerboostmodule_preset=Speed preset
+modoptions_verticalcornerboostmodule_preset_vanilla=Vanilla (-120)
+modoptions_verticalcornerboostmodule_preset_strong=Strong (-160)
+modoptions_verticalcornerboostmodule_preset_verystrong=Very strong (-200)
+modoptions_verticalcornerboostmodule_preset_custom=Custom
+modoptions_verticalcornerboostmodule_customspeed=Custom speed (positive number)
+modoptions_verticalcornerboostmodule_limitcustomspeed=Limit custom speed (turning off not recommended)

@@ -1,0 +1,6 @@
+modoptions_verticalcornerboostmodule_title=Vertical Corner Boost
+modoptions_verticalcornerboostmodule_enabled=Enable Vertical Corner Boost
+modoptions_verticalcornerboostmodule_showpausemenusubmenu=Show submenu in pause menu
+
+VCB_MENU_TITLE=Vertical Corner Boost
+VCB_MENU_TOGGLE=Enabled

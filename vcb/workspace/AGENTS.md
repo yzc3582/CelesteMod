@@ -22,7 +22,11 @@
 ## 硬性行为约束（不可违反）
 
 1. **只补纵向速度**：不主动修改 `Speed.X`，保留玩家原有水平动量。
-2. **不改变翻越速度的数值**：使用原版 `ClimbHop` 的纵向速度常量（从 `Celeste.dll` 反编译确认，不要沿用 `SuperWallJump` 的 `-160f`）。
+2. **默认档位不改变翻越速度的数值**：`Vanilla` 档必须使用原版 `ClimbHop` 的纵向速度常量
+   （`-120f`，从 `Celeste.dll` 反编译确认，不要沿用 `SuperWallJump` 的 `-160f`）。
+   其余档位（`Strong -160` / `VeryStrong -200` / `Custom` 自定义正数输入）是可选的加强档，
+   不要求与原版等值；但**默认值必须是原版值**，且注入值与防叠加比对基准必须同源
+   （统一取 `CornerBoostLogic.TargetSpeed`，不要写死 -120）。
 3. **不与原版 ClimbHop 叠加**：如果原版已经在同一事件中赋予翻越速度，本 Mod 跳过注入。
 4. **可开关**：
    - 设置项 `Settings.Enabled`（`EverestModuleSettings` 自动生成 Mod 选项菜单勾选框）。
@@ -37,7 +41,7 @@
   - 前方上方一定高度内**没有** `Solid`（表示墙顶就在附近）。
   - `self.Speed.Y < 0`（正在向上运动）。
   - （提示：“前方短距离内有 `Solid`”可参考抓墙跳的距离）
-- **注入**：`self.Speed.Y = <原版 ClimbHop 纵向速度>`。
+- **注入**：`self.Speed.Y = CornerBoostLogic.TargetSpeed`（默认等于原版 ClimbHop 的 `-120f`，可由速度档位设置调整）。
 - **防重复**：用 `Dictionary<Player, bool>` 或附加 `Component` 标记“本次墙角事件已处理”；离开墙角区域（不再满足几何条件）时重置。
 
 ## 防叠加策略（双重保险）

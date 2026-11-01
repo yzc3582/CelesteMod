@@ -14,7 +14,7 @@
 
 | 事实 | 出处 |
 | --- | --- |
-| `private const float ClimbHopY = -120f;` | `Celeste.Player` |
+| `private const float ClimbHopY = -120f;`（literal const；运行时用 `FieldInfo.GetRawConstantValue()` 反射读取，直接写 `Player.ClimbHopY` 会被编译期内联） | `Celeste.Player` |
 | `ClimbHop()` 实际写的是 `Speed.Y = Math.Min(Speed.Y, -120f);`（**封顶**，非无条件赋值） | `Player.ClimbHop()` |
 | 同理 `ClimbHopX = 100f`，但有墙时走 `hopWaitX / hopWaitXSpeed`，无墙才直接写 `Speed.X` | `Player.ClimbHop()` |
 | 贴墙检测用 `CollideCheck<Solid>(Position + Vector2.UnitX * (float)Facing)`，即"判定盒整体平移 1 像素" | `Player.ClimbHop()` |
@@ -30,6 +30,9 @@
 | 选项本地化键名 = `modoptions_` + **设置类名（小写、去掉结尾的 `settings`）** + `_` + **属性名小写**；标题把属性名换成 `title` | `EverestModule.CreateModMenuSection` |
 | 因此本 Mod 的键前缀是 `modoptions_verticalcornerboostmodule_`（**不是** mod 名 `verticalcornerboost`） | 同上 |
 | 原版 Dialog 文件名是 `English.txt`、`Simplified Chinese.txt` 等（带空格的完整语言名） | `Content/Dialog/` |
+| `enum` 属性 → `TextMenu.Slider`，**按 enum 数值排序**；每项键为 `modoptions_<前缀>_<属性小写>_<枚举值小写>` | `EverestModule.CreateModMenuSection` |
+| `string` 属性 → `TextMenu.Button` 打开 `OuiModOptionString` 文本输入；**inGame（暂停菜单里）该控件会被禁用** | 同上 |
+| `[SettingMaxLength(n)]` 默认 12、`[SettingMinLength(n)]` 默认 1（string 属性） | 同上 |
 
 ---
 
@@ -86,30 +89,35 @@ Speed.Y = -120
 
 ## 4. 手感调参入口（开发者看这里）
 
-**唯一的速度数值**：`CornerBoostLogic.cs` 里的
+**速度的唯一出口**：`CornerBoostLogic.TargetSpeed`，由 `Settings.Preset` 决定。
+注入值 **和** "原版是否已生效"的比对基准都必须取它，**不要**再出现写死的 `-120`。
 
-```csharp
-public const float ClimbHopYSpeed = -120f;   // ← 想让翻越更"有力"就只改这里
-```
+| 档位 | 值 | 额外上升高度（估算） |
+| --- | --- | --- |
+| `Vanilla`（默认） | -120 | ≈ 8 px |
+| `Strong` | -160 | ≈ 14 px |
+| `VeryStrong` | -200 | ≈ 22 px |
+| `Custom` | `-abs(输入值)` | `v² / (2g)` |
 
-为什么 -120 感觉"没力气"：`Speed.Y` 单位是像素/秒，`Gravity = 900`，
-额外获得的高度约 `v² / (2g)`。
+- 为什么 -120 感觉"没力气"：`Speed.Y` 是像素/秒，`Gravity = 900`，额外高度 ≈ `v² / (2g)`。
+- `Vanilla` 档不写死数字：`CornerBoostLogic.ClimbHopYSpeed` 是 `static readonly`，静态初始化时反射读
+  `Player.ClimbHopY`（`GetRawConstantValue()`），失败才退回 -120；`Load()` 里会把它打进 `log.txt`。
+  这样游戏/Everest 升级改了常量也能自动跟上。
+- `Custom` 档：`Settings.CustomSpeed` 是 **string**（Everest 给 string 属性生成文本输入按钮），
+  玩家填正数，代码取绝对值再转成向上速度；解析失败 / ≤0 / NaN 一律退回 `-120`。
+- `Settings.LimitCustomSpeed`（默认 true）把上限压在 1000 px/s；关掉就不设上限（**不推荐**，
+  可能出现穿墙观感、摄像机乱飞或卡顿）。真正的输入兜底是 `[SettingMaxLength(6)]`（6 字符）。
+- 几何常量（同在 `CornerBoostLogic.cs`）：`WallGlueDistance`（默认 1f，贴墙判定平移量）、
+  `WallTopMargin`（默认 2f，允许墙顶高过玩家头顶的像素数；实机不触发时**优先调这个**，改 4~8）。
 
-| 取值 | 额外上升高度（估算） |
-| --- | --- |
-| -120（原版 ClimbHop） | ≈ 8 px |
-| -140 | ≈ 11 px |
-| -160（= MaxFall，也是 SuperWallJump 的手感量级） | ≈ 14 px |
-| -200 | ≈ 22 px |
+### 多版本策略（已决策：单 DLL + 档位，不要再加变体）
 
-配套可调项（同在 `CornerBoostLogic.cs`）：
-
-- `WallGlueDistance`（默认 1f）：贴墙判定的平移量。调大 = 更容易判定到墙，但可能"离墙还挺远就触发"。
-- `WallTopMargin`（默认 2f）：允许墙顶高过玩家头顶的像素数。实机没反应时**优先调这个**（改 4~8）。
-
-**注意**：`ClimbHopYSpeed` 同时被用作"原版是否已生效"的比对基准和注入值，
-改它不会破坏防叠加逻辑；但它一旦不再是 -120，`AGENTS.md` 的硬性约束 2
-（"不改变翻越速度的数值"）就不再成立，需要同步更新 AGENTS.md，并明确这是"加强版"而非"还原版"。
+- "原版版 / 有力气版"两个 DLL 的方案**不做**。`everest.yaml` 只有 `Dependencies` /
+  `OptionalDependencies`，**没有**互斥字段；多 DLL 只能在运行时扫描 `Everest.Modules` 仲裁，
+  且两套 UI 与 Dialog 键会重复（同键互相覆盖），成本远大于收益。
+- 如果将来非要做多 DLL：仲裁必须**懒执行**（首次 `Player.Update` 时判定），
+  因为 `EverestModule` 没有 `Ready()`，`Load()` 时兄弟模块可能还没注册。
+- 顺带记录：本实现的 `Math.Min` 语义让"更强的那个赢"，多个变体同时存在也不会来回抖。
 
 ---
 
@@ -120,9 +128,10 @@ public const float ClimbHopYSpeed = -120f;   // ← 想让翻越更"有力"就�
 - [x] 暂停菜单改为子菜单 + 还原 `InnerContent` 修居中（**实机待确认**）
 - [x] Mod 选项新增 `ShowPauseMenuSubMenu`（**实机待确认**）
 - [x] 中英双语本地化（`Dialog/`，键前缀 `modoptions_verticalcornerboostmodule_`）
+- [x] 速度档位 `Preset` + `CustomSpeed` + `LimitCustomSpeed`（编译通过，**实机待确认**）
 - [ ] 抓墙被 Extended Variants 禁用时是否仍触发
 - [ ] CB / 抓墙跳 / 反墙跳蹭墙角各场景实测
-- [ ] 手感微调（`WallTopMargin`，必要时 `ClimbHopYSpeed`）
+- [ ] 手感微调（`WallTopMargin`；档位默认值不要动，保持 `Vanilla` = -120）
 
 ---
 

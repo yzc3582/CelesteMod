@@ -7,6 +7,9 @@ internal static class CornerBoostHooks {
     public static void Load() {
         On.Celeste.Player.Update += onPlayerUpdate;
         Everest.Events.Level.OnCreatePauseMenuButtons += onCreatePauseMenuButtons;
+
+        // 把运行时读到的原版常量打进日志（log.txt），方便确认反射有没有成功
+        Logger.Log(LogLevel.Info, "VerticalCornerBoost", $"Vanilla ClimbHopY = {CornerBoostLogic.ClimbHopYSpeed}");
     }
 
     public static void Unload() {
