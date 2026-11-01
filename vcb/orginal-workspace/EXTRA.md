@@ -10,7 +10,7 @@ ilspycmd
 
 dnSpyEx（D:\yzc3582\apps\green\dnSpy）
 
-Saladim.CelesteModTemplate（而非原版）+ dotnet new sapcelestemod -n VerticalCornerBoost
+CelesteMod.Templates + dotnet new celestemod -n VerticalCornerBoost
 
 ---
 
