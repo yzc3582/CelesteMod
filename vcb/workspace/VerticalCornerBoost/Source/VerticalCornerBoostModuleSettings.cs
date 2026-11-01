@@ -34,10 +34,14 @@ public class VerticalCornerBoostModuleSettings : EverestModuleSettings {
 
 /// <summary>
 /// 纵向速度档位。底层数值决定 Mod 选项滑块里的排列顺序（Everest 按 enum 数值排序生成 Slider）。
+/// 注意：**成员名是存档键**（YamlDotNet 按名字序列化），想改显示名请改 Dialog 里的
+/// modoptions_verticalcornerboostmodule_preset_* 文案，不要重命名这里的成员。
 /// </summary>
 public enum CornerBoostPreset {
-    Vanilla = 0,
-    Strong = 1,
-    VeryStrong = 2,
-    Custom = 3,
+    Vanilla = 0,          // 原版：向上 120
+    Strong = 1,           // 略有力气：向上 160
+    VeryStrong = 2,       // 比较有力气：向上 200
+    ExtremelyStrong = 3,  // 超级有力气：向上 300
+    Mmtgd = 4,            // MMTGD：向上 400
+    Custom = 5,           // 自定义（读 CustomSpeed）
 }

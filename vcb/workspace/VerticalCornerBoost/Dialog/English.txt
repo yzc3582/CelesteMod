@@ -6,9 +6,11 @@ VCB_MENU_TITLE=Vertical Corner Boost
 VCB_MENU_TOGGLE=Enabled
 
 modoptions_verticalcornerboostmodule_preset=Speed preset
-modoptions_verticalcornerboostmodule_preset_vanilla=Vanilla (-120)
-modoptions_verticalcornerboostmodule_preset_strong=Strong (-160)
-modoptions_verticalcornerboostmodule_preset_verystrong=Very strong (-200)
+modoptions_verticalcornerboostmodule_preset_vanilla=Vanilla (120 px/s upward)
+modoptions_verticalcornerboostmodule_preset_strong=Slightly stronger (160 px/s upward)
+modoptions_verticalcornerboostmodule_preset_verystrong=Stronger (200 px/s upward)
+modoptions_verticalcornerboostmodule_preset_extremelystrong=Extremely strong (300 px/s upward)
+modoptions_verticalcornerboostmodule_preset_mmtgd=MMTGD (400 px/s upward)
 modoptions_verticalcornerboostmodule_preset_custom=Custom
-modoptions_verticalcornerboostmodule_customspeed=Custom speed (positive number)
-modoptions_verticalcornerboostmodule_limitcustomspeed=Limit custom speed (turning off not recommended)
+modoptions_verticalcornerboostmodule_customspeed=Custom speed (positive number, becomes upward)
+modoptions_verticalcornerboostmodule_limitcustomspeed=Limit custom speed (not recommended to turn off)

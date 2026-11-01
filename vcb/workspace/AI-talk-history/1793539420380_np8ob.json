@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "session_id": "1793539420380_np8ob",
+  "source": "vscode",
+  "pid": 22412,
+  "started_at": "2026-11-01T13:23:40.453Z",
+  "ended_at": "2026-11-01T14:39:08.743Z",
+  "exit_code": 0,
+  "status": "completed",
+  "interactive": true,
+  "provider": "openai-compatible",
+  "model": "deepseek-flash",
+  "cwd": "d:\\yzc3582\\files_new\\Projects\\CelesteMod\\vcb\\workspace",
+  "workspace_root": "d:\\yzc3582\\files_new\\Projects\\CelesteMod\\vcb\\workspace",
+  "enable_tools": true,
+  "enable_spawn": false,
+  "enable_teams": false,
+  "prompt": "根据AGENTS.md，完成任务。",
+  "metadata": {
+    "sessionHistoryOrigin": {
+      "mode": "user",
+      "version": "0.1.14"
+    },
+    "git": {
+      "url": "git@github.com:yzc3582/CelesteMod.git",
+      "branch": "main"
+    },
+    "checkpoint": {
+      "latest": {
+        "ref": "43026bb2e68d8a26557162f9d585af774e579ac9",
+        "createdAt": 1793543675971,
+        "runCount": 9,
+        "kind": "commit"
+      },
+      "history": [
+        {
+          "ref": "c4256261e5a4cc603ac3467ed0144515bd5154b9",
+          "createdAt": 1793539422887,
+          "runCount": 1,
+          "kind": "stash"
+        },
+        {
+          "ref": "45941fb0c2970a09b95cf7eb163d5a7307b76668",
+          "createdAt": 1793539902091,
+          "runCount": 3,
+          "kind": "stash"
+        },
+        {
+          "ref": "1a11d1274380f5874f740c959a900639fbb70ca3",
+          "createdAt": 1793539931120,
+          "runCount": 4,
+          "kind": "stash"
+        },
+        {
+          "ref": "d77532ee3dee139df8ca8070581cbd2f1cdd6f45",
+          "createdAt": 1793540259786,
+          "runCount": 5,
+          "kind": "commit"
+        },
+        {
+          "ref": "8ec63f08ffc52c581eb92e644ab0eadd4cdd5476",
+          "createdAt": 1793541316044,
+          "runCount": 7,
+          "kind": "stash"
+        },
+        {
+          "ref": "ed66d0765c7a6936e184137587508990531e5092",
+          "createdAt": 1793541553601,
+          "runCount": 8,
+          "kind": "stash"
+        },
+        {
+          "ref": "43026bb2e68d8a26557162f9d585af774e579ac9",
+          "createdAt": 1793543675971,
+          "runCount": 9,
+          "kind": "commit"
+        }
+      ]
+    },
+    "title": "根据AGENTS.md，完成任务。",
+    "isFavorited": false,
+    "size": 210454,
+    "totalCost": 0,
+    "tokensIn": 2539,
+    "tokensOut": 8895,
+    "cacheWrites": 0,
+    "cacheReads": 834688,
+    "modelId": "deepseek-flash",
+    "legacyTask": false,
+    "aggregatedAgentsCost": 0,
+    "usage": {
+      "inputTokens": 6394437,
+      "outputTokens": 84280,
+      "cacheReadTokens": 6080768,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    },
+    "aggregateUsage": {
+      "inputTokens": 6394437,
+      "outputTokens": 84280,
+      "cacheReadTokens": 6080768,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    }
+  },
+  "messages_path": "C:\\Users\\Lenovo\\.codepanda\\data\\sessions\\1793539420380_np8ob\\1793539420380_np8ob.messages.json"
+}

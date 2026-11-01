@@ -92,12 +92,17 @@ Speed.Y = -120
 **速度的唯一出口**：`CornerBoostLogic.TargetSpeed`，由 `Settings.Preset` 决定。
 注入值 **和** "原版是否已生效"的比对基准都必须取它，**不要**再出现写死的 `-120`。
 
-| 档位 | 值 | 额外上升高度（估算） |
-| --- | --- | --- |
-| `Vanilla`（默认） | -120 | ≈ 8 px |
-| `Strong` | -160 | ≈ 14 px |
-| `VeryStrong` | -200 | ≈ 22 px |
-| `Custom` | `-abs(输入值)` | `v² / (2g)` |
+| 档位（枚举名） | 显示名 | 向上速度 | 额外上升高度（估算） |
+| --- | --- | --- | --- |
+| `Vanilla`（默认） | 原版 | 120 | ≈ 8 px |
+| `Strong` | 略有力气 | 160 | ≈ 14 px |
+| `VeryStrong` | 比较有力气 | 200 | ≈ 22 px |
+| `ExtremelyStrong` | 超级有力气 | 300 | ≈ 50 px |
+| `Mmtgd` | MMTGD | 400 | ≈ 89 px |
+| `Custom` | 自定义 | `abs(输入值)` | `v² / (2g)` |
+
+- **枚举成员名是存档键**（YamlDotNet 按名字序列化）→ 改档位显示名只改 `Dialog` 里的
+  `modoptions_verticalcornerboostmodule_preset_*`，**不要重命名枚举成员**，否则旧设置解析失败会被重置。
 
 - 为什么 -120 感觉"没力气"：`Speed.Y` 是像素/秒，`Gravity = 900`，额外高度 ≈ `v² / (2g)`。
 - `Vanilla` 档不写死数字：`CornerBoostLogic.ClimbHopYSpeed` 是 `static readonly`，静态初始化时反射读

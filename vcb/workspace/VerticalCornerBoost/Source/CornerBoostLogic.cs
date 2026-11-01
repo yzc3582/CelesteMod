@@ -46,13 +46,17 @@ internal static class CornerBoostLogic {
     public static float TargetSpeed {
         get {
             switch (VerticalCornerBoostModule.Settings.Preset) {
-                case CornerBoostPreset.Strong:
+                case CornerBoostPreset.Strong:            // 略有力气
                     return -160f;
-                case CornerBoostPreset.VeryStrong:
+                case CornerBoostPreset.VeryStrong:        // 比较有力气
                     return -200f;
+                case CornerBoostPreset.ExtremelyStrong:   // 超级有力气
+                    return -300f;
+                case CornerBoostPreset.Mmtgd:             // MMTGD
+                    return -400f;
                 case CornerBoostPreset.Custom:
                     return -CustomSpeedUp();
-                default:
+                default:                                  // Vanilla：原版 ClimbHop
                     return ClimbHopYSpeed;
             }
         }
