@@ -22,11 +22,22 @@ internal static class CornerBoostHooks {
     }
 
     private static void onCreatePauseMenuButtons(Level level, TextMenu menu, bool minimal) {
-        if (minimal) {
+        // minimal（简易暂停菜单）不塞自定义项；玩家也可以在 Mod 选项里关掉这个子菜单
+        if (minimal || !VerticalCornerBoostModule.Settings.ShowPauseMenuSubMenu) {
             return;
         }
 
-        menu.Add(new TextMenu.OnOff("Vertical Corner Boost", VerticalCornerBoostModule.Settings.Enabled)
+        // 传入 Option 时 Option.Added() 会把 Container.InnerContent 改成 TwoColumn，
+        // 那会让暂停菜单所有原版按钮从居中对齐变成靠左。先记下原值（原版是 OneColumn）。
+        TextMenu.InnerContentMode originalInnerContent = menu.InnerContent;
+
+        TextMenuExt.SubMenu subMenu = new TextMenuExt.SubMenu(Dialog.Clean("VCB_MENU_TITLE"), enterOnSelect: false);
+        subMenu.Add(new TextMenu.OnOff(Dialog.Clean("VCB_MENU_TOGGLE"), VerticalCornerBoostModule.Settings.Enabled)
             .Change(on => VerticalCornerBoostModule.Settings.Enabled = on));
+        menu.Add(subMenu);
+
+        // 必须在 menu.Add(subMenu) 之后还原：子菜单里的项要等子菜单挂进 menu 才会触发 Added()
+        menu.InnerContent = originalInnerContent;
+        menu.RecalculateSize();
     }
 }

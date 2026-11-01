@@ -7,5 +7,8 @@ public class VerticalCornerBoostModuleSettings : EverestModuleSettings {
     /// </summary>
     public bool Enabled { get; set; } = true;
 
-
+    /// <summary>
+    /// 暂停菜单里是否显示本 Mod 的子菜单（子菜单内含启用开关）。
+    /// </summary>
+    public bool ShowPauseMenuSubMenu { get; set; } = true;
 }

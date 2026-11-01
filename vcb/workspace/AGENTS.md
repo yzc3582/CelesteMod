@@ -8,6 +8,9 @@
 - **类型**: Celeste Everest 代码 Mod，**不添加任何新实体**，只注入玩家移动逻辑。
 - **目标游戏**: Celeste (PC) + Everest（注：路径见目录下 `Celeste.txt`）
 - 更多额外内容见目录下 `EXTRA.md`
+- **AI 代理开工前必读 [`AI-EXTRA.md`](AI-EXTRA.md)**：已反编译验证的 API 事实、
+  暂停菜单 `InnerContent` 对齐陷阱、本地化键名规则（前缀基于设置类名而非 mod 名）、
+  手感调参入口、待办与验证状态。
 
 ## 一句话机制
 
