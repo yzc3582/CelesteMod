@@ -82,7 +82,13 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 ## 地图触发器（Helper 式）
 
-- 实体名 `VerticalCornerBoost/CornerBoostTrigger`（`[CustomEntity]`，Loenn 定义在 `Loenn/triggers/cornerBoostTrigger.lua`）。
+- 实体名 `VerticalCornerBoost/CornerBoostTrigger`（`[CustomEntity]`）。
+  编辑器定义：`Loenn/triggers/cornerBoostTrigger.lua`、`Ahorn/triggers/cornerBoostTrigger.jl`。
+- **尺寸可自由拉伸**：`width` / `height` 只是放置时的默认值，不是写死的尺寸。
+  C# 侧不碰尺寸——基类 `Trigger(data, offset)` 执行 `Collider = new Hitbox(data.Width, data.Height)`；
+  Loenn 侧 `entities.canResize` 在 handler 没定义 `canResize` 时回退成
+  `entity.width ~= nil, entity.height ~= nil`，即**只要数据里有 width/height 就能拖拽缩放**；
+  Ahorn 侧靠 `EntityPlacement(..., "rectangle")` 得到同样的矩形缩放行为。
 - 字段：`enabled` / `requireGrab`（`leave` / `enable` / `disable`，默认 `leave` 即不改）、
   `speed`（正数 = 向上速度 px/s，`0` = 不改）、`revertOnLeave`（默认 true）、`revertOnDeath`（默认 true）、
   `coversScreen`（默认 false，为 true 时覆盖整间房间）、
@@ -138,4 +144,5 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 - [x] 三种抓键模式（按住 / 反转 / 切换）下 `RequireGrab` 行为都正确。
 - [x] EVM 打开 `True No Grabbing` 后不再触发；只禁用抓墙时仍然触发。
 - [ ] 地图触发器四种组合（enable/disable × revertOnLeave 开关）行为符合预期，离开房间不残留。
+- [ ] 触发器在 Loenn / Ahorn 里都能拖动改尺寸，且改完后游戏内生效范围与之一致。
 - [x] 三色显示：默认白、地图改蓝、玩家改金，改回地图值重新变蓝。

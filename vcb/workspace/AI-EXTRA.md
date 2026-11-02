@@ -92,7 +92,27 @@
 | `CornerBoostTrigger.cs` | 地图触发器 `VerticalCornerBoost/CornerBoostTrigger` |
 | `VerticalCornerBoostModuleSettings.cs` | 设置项 + 6 个 `Create<属性名>Entry` 覆盖 Everest 默认控件 |
 | `Loenn/triggers/cornerBoostTrigger.lua` | Loenn 里的触发器定义 |
+| `Ahorn/triggers/cornerBoostTrigger.jl` | Ahorn 里的触发器定义 |
 | `Dialog/English.txt`、`Dialog/Simplified Chinese.txt` | 中英双语本地化 |
+
+### 触发器尺寸为什么"能改"，以及别把它写死
+
+`width` / `height` 在编辑器定义里**只是放置时的默认值**，玩家随时拖拽缩放。依据（都查过源码/反编译）：
+
+- **C# 侧**：`CornerBoostTrigger` 的 ctor 只调 `base(data, offset)`；
+  `Celeste.Trigger` 的 ctor 里是 `Collider = new Hitbox(data.Width, data.Height)`。
+  **不要**在子类里再写 `new Hitbox(8, 8)` 之类，那才会真的把尺寸钉死。
+  唯一的例外是 `coversScreen`：它主动把 Collider 换成整间房间，这是有意的。
+- **Loenn 侧**：`src/entities.lua` 的
+  `entities.canResize(room, layer, entity)` → `getHandlerValue(entity, room, "canResize", entity.width ~= nil, entity.height ~= nil)`。
+  handler 没定义 `canResize` 时，默认值就是"width/height 字段是否存在"。
+  placement 的 `data` 会被逐键复制进实体（`entities.lua` 里 `for k, v in pairs(placementInfo.data)`），
+  所以**写了 width/height 就自动可缩放**，不需要额外的 `canResize` 标志。
+  另外 `getPlacements` 同时兼容 `placements = { ... }`（单表）和 `placements = { {...} }`（列表）
+  两种写法（`if #placements > 0 then return placements[1] else return placements end`），但**推荐列表写法**。
+- **Ahorn 侧**：`@mapdef Trigger "...(... width::Integer=16, height::Integer=16 ...)` 给默认值，
+  `Ahorn.EntityPlacement(Type, "rectangle")` 让它按矩形放置/缩放。
+  Ahorn 的数值类型用 `Number`（参考 mod 里都是 `Number` / `Integer` / `String` / `Bool`，别写 `Float32`）。
 
 判定顺序（`CornerBoostLogic.Update`，顺序本身有含义，别随意调换）：
 
