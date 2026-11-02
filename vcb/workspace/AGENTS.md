@@ -5,7 +5,8 @@
 - **中文名**: 纵向抓角加速
 - **English**: Vertical Corner Boost
 - **代号 / 内部命名**: `VerticalCornerBoost`（旧分支曾用 `Corner Hop Assist`，已弃用）
-- **类型**: Celeste Everest 代码 Mod，**不添加任何新实体**，只注入玩家移动逻辑。
+- **类型**: Celeste Everest 代码 Mod，主要注入玩家移动逻辑；另提供一个地图触发器
+  `VerticalCornerBoost/CornerBoostTrigger`（见下文"地图触发器"），不添加其它实体。
 - **目标游戏**: Celeste (PC) + Everest（注：路径见目录下 `Celeste.txt`）
 - 更多额外内容见目录下 `EXTRA.md`
 - **AI 代理开工前必读 [`AI-EXTRA.md`](AI-EXTRA.md)**：已反编译验证的 API 事实、
@@ -19,6 +20,13 @@
 自动向 `Player.Speed.Y` 注入原版 `ClimbHop` 的纵向速度。
 **不依赖 `StateMachine`，不依赖 `ClimbCheck()`，不依赖抓墙/抓墙跳是否被 ExtendedVarients 禁用。**
 
+默认要求**抓握**才触发（`Settings.RequireGrab`，默认 `true`）：判定读的是 `Input.GrabCheck`
+（`GrabModes` 的按住 / 反转 / 切换三种模式都已由它处理好），而不是"能不能抓墙"。
+所以即使玩家抓不到墙（例如某个异变禁用了抓墙），只要处于抓握状态仍然触发；
+Extended Variants 的 `True No Grabbing` 会把 `GrabCheck` 强制成 `false`，从而自然挡住触发。
+
+Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项或暂停菜单里打开。
+
 ## 硬性行为约束（不可违反）
 
 1. **只补纵向速度**：不主动修改 `Speed.X`，保留玩家原有水平动量。
@@ -26,12 +34,15 @@
    （`-120f`，从 `Celeste.dll` 反编译确认，不要沿用 `SuperWallJump` 的 `-160f`）。
    其余档位（`Strong -160` / `VeryStrong -200` / `Custom` 自定义正数输入）是可选的加强档，
    不要求与原版等值；但**默认值必须是原版值**，且注入值与防叠加比对基准必须同源
-   （统一取 `CornerBoostLogic.TargetSpeed`，不要写死 -120）。
+   （统一取 `CornerBoostState.Speed`；不要写死 -120，也不要在两个文件里各算一份速度）。
 3. **不与原版 ClimbHop 叠加**：如果原版已经在同一事件中赋予翻越速度，本 Mod 跳过注入。
 4. **可开关**：
-   - 设置项 `Settings.Enabled`（`EverestModuleSettings` 自动生成 Mod 选项菜单勾选框）。
-   - **同时**在暂停界面通过 `Everest.Events.Level.OnCreatePauseMenuButtons` 插入 `TextMenu.OnOff`，绑定同一个 `Settings.Enabled`。
-5. **不依赖攀爬状态**：即使拓展异变禁用了抓墙/抓墙跳，机制仍然生效（因为只读取 `Speed` 和碰撞几何）。
+   - 设置项 `Settings.Enabled`，**默认 `false`**。
+   - **同时**在暂停界面通过 `Everest.Events.Level.OnCreatePauseMenuButtons` 插入子菜单项，绑定同一个 `Settings.Enabled`。
+   - 暂停菜单子菜单与 Mod 选项菜单共用 `CornerBoostUI`，并按 Extended Variants 的三色语义显示：
+     金 = 玩家自己在游戏内改过、蓝 = 地图触发器改过、白 = 默认值。
+5. **不依赖攀爬状态**：即使拓展异变禁用了抓墙/抓墙跳，机制仍然生效（因为只读取 `Speed`、`Input.GrabCheck` 和碰撞几何）。
+   `RequireGrab` 判断的是“抓握状态”，不是“能否抓墙”。
 
 ## 核心 Hook
 

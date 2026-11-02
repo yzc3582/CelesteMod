@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
 using Microsoft.Xna.Framework;
 
@@ -36,44 +35,6 @@ internal static class CornerBoostLogic {
         return FallbackClimbHopY;
     }
 
-    // 自定义档位的上限，防止手滑输入很大的数把玩家弹飞
-    private const float MaxCustomSpeed = 1000f;
-
-    /// <summary>
-    /// 当前档位对应的纵向速度（负值 = 向上）。
-    /// 注入值和“是否已被原版生效”的比对基准都必须用它：写死 -120 的话，换档后判定就错了。
-    /// </summary>
-    public static float TargetSpeed {
-        get {
-            switch (VerticalCornerBoostModule.Settings.Preset) {
-                case CornerBoostPreset.Strong:            // 略有力气
-                    return -160f;
-                case CornerBoostPreset.VeryStrong:        // 比较有力气
-                    return -200f;
-                case CornerBoostPreset.ExtremelyStrong:   // 超级有力气
-                    return -300f;
-                case CornerBoostPreset.Mmtgd:             // MMTGD
-                    return -400f;
-                case CornerBoostPreset.Custom:
-                    return -CustomSpeedUp();
-                default:                                  // Vanilla：原版 ClimbHop
-                    return ClimbHopYSpeed;
-            }
-        }
-    }
-
-    // 玩家填正数，这里取绝对值再转成向上速度；填不合法就退回原版值
-    private static float CustomSpeedUp() {
-        string raw = VerticalCornerBoostModule.Settings.CustomSpeed;
-        if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out float value)
-            && !float.IsNaN(value)
-            && value > 0f) {
-            return VerticalCornerBoostModule.Settings.LimitCustomSpeed ? Math.Min(value, MaxCustomSpeed) : value;
-        }
-
-        return -ClimbHopYSpeed;
-    }
-
     // 判定盒朝面向方向平移的像素数，和原版 ClimbHop()/ClimbCheck() 的“1 像素贴墙”一致
     private const float WallGlueDistance = 1f;
 
@@ -84,7 +45,16 @@ internal static class CornerBoostLogic {
     private static readonly Dictionary<Player, bool> hasHoppedThisWall = new();
 
     public static void Update(Player self) {
-        if (self.Scene == null || self.Dead) {
+        if (self.Scene is not Level level) {
+            hasHoppedThisWall.Clear();
+            return;
+        }
+
+        CornerBoostState.Prune(level);
+
+        if (self.Dead) {
+            // 死亡后触发器按 revertOnDeath 恢复，等重生再重新进触发器
+            CornerBoostState.RemoveEntriesOnDeath();
             hasHoppedThisWall.Remove(self);
             return;
         }
@@ -95,8 +65,16 @@ internal static class CornerBoostLogic {
             return;
         }
 
-        if (!VerticalCornerBoostModule.Settings.Enabled) {
+        if (!CornerBoostState.Enabled) {
             // 关掉开关时也清标记，免得重新打开后同一个墙角被“上一次”的记录挡住
+            hasHoppedThisWall.Remove(self);
+            return;
+        }
+
+        if (CornerBoostState.RequireGrab && !Input.GrabCheck) {
+            // 只认“抓握状态”，不认“能不能抓墙”：即使玩家抓不到墙，只要抓着也照样触发。
+            // Input.GrabCheck 已经把按住 / 反转 / 切换三种抓键模式都算好了；
+            // EVM 的 True No Grabbing 会把 getter 强制返回 false，因此也会挡住这里。
             hasHoppedThisWall.Remove(self);
             return;
         }
@@ -110,7 +88,7 @@ internal static class CornerBoostLogic {
             return;
         }
 
-        float target = TargetSpeed;
+        float target = CornerBoostState.Speed;
         hasHoppedThisWall[self] = true;
 
         // 双重保险 1：速度已经是目标值，视为原版（或别的来源）这一帧已经给过，不叠加
@@ -139,5 +117,6 @@ internal static class CornerBoostLogic {
 
     public static void Clear() {
         hasHoppedThisWall.Clear();
+        CornerBoostState.Clear();
     }
 }

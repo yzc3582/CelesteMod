@@ -1,0 +1,41 @@
+--- 0 ---
+<user_input mode="act">根据AGENTS.md，完成任务。</user_input>
+
+--- 35 ---
+<user_input mode="act">暂停菜单要能开关，不能只开不关</user_input>
+
+--- 54 ---
+<user_input mode="act">注入，但因为取min是Speed.Y更小，故不改变速度</user_input>
+
+--- 56 ---
+<user_input mode="act">我手动装</user_input>
+
+--- 58 ---
+<user_input mode="act">不会额外触发翻越。</user_input>
+
+--- 60 ---
+<user_input mode="act">先别QA了。我有新的几点要做，请您写入AI-EXTRA.md（让后续的Agent可以记住）并从AGENTS.md指向。1. 在mod加入之前，菜单的文字都是居中的。然而加入后都靠左了。2.我希望开关能放在子菜单内（而非直接显示在暂停菜单）。3.在mod选项加入“是否在暂停时显示子菜单”。4.做好中英双语本地化。5.指导一下该mod给的速度开发者在哪调，主要我发现-120给我的感觉像没力气一样😅</user_input>
+
+--- 118 ---
+<user_input mode="act">在多版本（原版、有力气版，等等）下如何使其冲突？至少2种方案</user_input>
+
+--- 128 ---
+<user_input mode="act">让手感可选感觉比原方案好。不过除了几个选项，我也希望提供自行输入速度的方法（输入正数，自动转为向上速度）我说的“冲突”相当于互斥，具体表现为同时加载直接崩游戏（不过既然我选了方案1，那这个就不重要了。）</user_input>
+
+--- 139 ---
+<user_input mode="act">自定义上限建议再给个关闭上限（不推荐）的选项，万一我就想飞起来呢</user_input>
+
+--- 140 ---
+<user_input mode="act">或者干脆别给上限了</user_input>
+
+--- 161 ---
+<user_input mode="act">可能默认值直接从游戏读取吗</user_input>
+
+--- 176 ---
+<user_input mode="act">[TASK RESUMPTION] Please continue where you left off.</user_input>
+
+--- 184 ---
+<user_input mode="act">Release是我自己建的：mod可以打包为zip再加入，故我会手动打包用于发布（测试仍用文件夹）</user_input>
+
+--- 186 ---
+<user_input mode="act">就算“很有力气”给人的感觉也只相当于一次跳跃。建议把各挡位名字略下调，(有力气、很有力气)->(略有力气、比较有力气)，新挡位“超级（英文Extremely）有力气”给到300，新挡位“MMTGD（中英文一致）”给到400，同时表述更清晰（负号改成“向上提供xxx速度”）；中文下“关闭不推荐”改成更对的“不推荐关闭”（英文不改动，除非你有更好的翻译）</user_input>

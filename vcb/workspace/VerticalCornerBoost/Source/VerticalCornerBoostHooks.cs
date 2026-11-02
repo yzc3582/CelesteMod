@@ -35,8 +35,7 @@ internal static class CornerBoostHooks {
         TextMenu.InnerContentMode originalInnerContent = menu.InnerContent;
 
         TextMenuExt.SubMenu subMenu = new TextMenuExt.SubMenu(Dialog.Clean("VCB_MENU_TITLE"), enterOnSelect: false);
-        subMenu.Add(new TextMenu.OnOff(Dialog.Clean("VCB_MENU_TOGGLE"), VerticalCornerBoostModule.Settings.Enabled)
-            .Change(on => VerticalCornerBoostModule.Settings.Enabled = on));
+        CornerBoostUI.AddPauseMenuItems(subMenu);
         menu.Add(subMenu);
 
         // 必须在 menu.Add(subMenu) 之后还原：子菜单里的项要等子菜单挂进 menu 才会触发 Added()
