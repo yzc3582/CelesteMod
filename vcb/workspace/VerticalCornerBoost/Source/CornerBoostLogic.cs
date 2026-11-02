@@ -41,8 +41,33 @@ internal static class CornerBoostLogic {
     // 允许墙顶高过玩家头顶的像素数（实机微调就从这里开始）
     private const float WallTopMargin = 2f;
 
-    // “这一次贴墙上冲已经处理过”，防止同一段墙角被反复注入
+    // “这一次贴墙上冲已经处理过”，防止同一段墙角被反复注入。
+    // 用 Player 作 key 时必须保证条目会被清掉，否则死亡/换图后旧 Player 引用会被一直持有。
     private static readonly Dictionary<Player, bool> hasHoppedThisWall = new();
+
+    /// <summary>
+    /// 清掉已经离开场景的 Player 条目。虽然 Update 的各个分支都会 Remove(self)，
+    /// 但“换图时旧 Player 直接被销毁、新 Player 是另一个对象”这种情况只能靠这里兜底。
+    /// </summary>
+    private static void PruneStale(Level level) {
+        if (hasHoppedThisWall.Count == 0) {
+            return;
+        }
+
+        // 正常情况下同时只会有 1 个 Player 在表里；这里只做小规模过滤，不需要复杂结构。
+        List<Player> stale = null;
+        foreach (Player player in hasHoppedThisWall.Keys) {
+            if (player == null || player.Scene != level) {
+                (stale ??= new List<Player>()).Add(player);
+            }
+        }
+
+        if (stale != null) {
+            foreach (Player player in stale) {
+                hasHoppedThisWall.Remove(player);
+            }
+        }
+    }
 
     public static void Update(Player self) {
         if (self.Scene is not Level level) {
@@ -51,9 +76,12 @@ internal static class CornerBoostLogic {
         }
 
         CornerBoostState.Prune(level);
+        PruneStale(level);
 
         if (self.Dead) {
-            // 死亡后触发器按 revertOnDeath 恢复，等重生再重新进触发器
+            // 死亡后触发器按 revertOnDeath 恢复，等重生再重新进触发器。
+            // 注意：Dead 一旦置 true 就不会再变回 false（Player 会被销毁重建），
+            // 所以这里每帧都会执行；RemoveEntriesOnDeath 是幂等的，代价可忽略。
             CornerBoostState.RemoveEntriesOnDeath();
             hasHoppedThisWall.Remove(self);
             return;

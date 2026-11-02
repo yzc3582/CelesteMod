@@ -305,6 +305,7 @@ internal static class CornerBoostState {
     public static void ResetToDefaults() {
         Settings.Enabled = DefaultEnabled;
         Settings.RequireGrab = DefaultRequireGrab;
+        Settings.ShowPauseMenuSubMenu = true;
         Settings.Preset = CornerBoostPreset.Vanilla;
         Settings.CustomSpeed = "120";
         Settings.LimitCustomSpeed = true;
