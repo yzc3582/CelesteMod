@@ -38,8 +38,9 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 3. **不与原版 ClimbHop 叠加**：如果原版已经在同一事件中赋予翻越速度，本 Mod 跳过注入。
 4. **可开关**：
    - 设置项 `Settings.Enabled`，**默认 `false`**。
-   - **同时**在暂停界面通过 `Everest.Events.Level.OnCreatePauseMenuButtons` 插入子菜单项，绑定同一个 `Settings.Enabled`。
-   - 暂停菜单子菜单与 Mod 选项菜单共用 `CornerBoostUI`，并按 Extended Variants 的三色语义显示：
+   - **同时**在暂停界面通过 `Everest.Events.Level.OnCreatePauseMenuButtons` 插入一个入口按钮，
+     按进去是独立设置界面（不是下拉式子菜单），与 Mod 选项菜单共享同一批设置项。
+   - 两处菜单都按 Extended Variants 的三色语义显示：
      金 = 玩家自己在游戏内改过、蓝 = 地图触发器改过、白 = 默认值。
 5. **不依赖攀爬状态**：即使拓展异变禁用了抓墙/抓墙跳，机制仍然生效（因为只读取 `Speed`、`Input.GrabCheck` 和碰撞几何）。
    `RequireGrab` 判断的是“抓握状态”，不是“能否抓墙”。
@@ -63,9 +64,18 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 ## 暂停菜单与 Mod 选项
 
-- 订阅 `Everest.Events.Level.OnCreatePauseMenuButtons`；`minimal == false` 且 `Settings.ShowPauseMenuSubMenu` 时插入子菜单。
-- 子菜单和 Mod 选项菜单都通过 `CornerBoostUI` 构建控件（`ColoredOnOff` / `ColoredSlider` / `ColoredButton`），
+- 订阅 `Everest.Events.Level.OnCreatePauseMenuButtons`；`minimal == false` 且 `Settings.ShowPauseMenuSubMenu` 时插入入口按钮。
+- 入口按钮**插在“选项”之前**（照 EVM：它也是插在 `menu_pause_options` 前面），不是追加到末尾。
+- 按下入口进入**独立界面**（`CornerBoostMenu`），做法照 EVM 的 `AbstractSubmenu`：
+  先把父菜单 `RemoveSelf()`、把 `Level.PauseMainMenuOpen` 置 false，再往 `Level` 加一个新的 `TextMenu`；
+  按 ESC / 取消 / “返回”时 `menu.Close()` 并把父菜单 `level.Add(parentMenu)` 放回去，恢复 `PauseMainMenuOpen`。
+  **不要**用 `TextMenuExt.SubMenu` 做下拉式子菜单：它把所有行挤在固定宽度里，行一多就互相叠字（已踩过）。
+- 界面内容由 `CornerBoostUI.AddSettingsItems` 构建，Mod 选项菜单用同一套控件，
   颜色每帧按 `CornerBoostState` 现算：金 = 玩家在游戏内改过、蓝 = 地图触发器改过、白 = 默认。
+- 界面末尾有“恢复默认值”（语义照 EVM 的 Reset to default）：把 `Enabled` / `RequireGrab` / `Preset` /
+  `CustomSpeed` / `LimitCustomSpeed` 全部写回出厂值，并清空“玩家改过”的标记，让地图触发器重新说了算。
+- 按暂停键离开独立界面时调 `level.Unpause()`（它自己会关菜单、播音效、重置 freeze timer），
+  不要自己再 `menu.Close()` + `Play`，否则音效重复。
 - Mod 选项菜单通过设置类里的 `public void Create<属性名>Entry(TextMenu, bool)` 覆盖 Everest 的默认项
   （Everest 一旦发现子类重写了 `CreateModMenuSection` 或存在这些方法，就不再自动生成对应控件）。
 - `CustomSpeed` 用 `OuiModOptionString` 输入，`inGame` 时按钮禁用（与 Everest 默认行为一致）。
@@ -88,13 +98,15 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 ## 暂停菜单开关实现
 
-见上文“暂停菜单与 Mod 选项”：子菜单通过 `CornerBoostUI.AddPauseMenuItems` 构建，
+见上文“暂停菜单与 Mod 选项”：入口按钮由 `CornerBoostMenu.BuildOpenButton` 构建，
 `Change` 回调统一走 `CornerBoostState.SetXxxFromMenu`，与 Mod 选项菜单共享同一设置源。
 
-### 对齐陷阱（别回退）
+### 对齐陷阱（历史记录，保留以防回退）
 
-`TextMenu.Option<T>.Added()` 会把 `Container.InnerContent` 改成 `TwoColumn`，导致暂停菜单所有文字靠左。
-所以必须先记下原值，`menu.Add(subMenu)` **之后**再还原并 `RecalculateSize()`。
+曾经用 `TextMenuExt.SubMenu` 做下拉式子菜单，踩了两个坑：
+`TextMenu.Option<T>.Added()` 会把 `Container.InnerContent` 改成 `TwoColumn`，导致暂停菜单文字靠左；
+而且子菜单把所有行挤在固定宽度里，行一多就**互相叠字**。
+现在改成独立界面，这两个问题都不存在。**不要**再退回子菜单方案。
 
 ## 开发环境
 
@@ -114,14 +126,16 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 ## 验证清单（部分可由人类验证）
 
-- [ ] 编译通过，并在游戏中加载 Mod 无报错。
+- [x] 编译通过，并在游戏中加载 Mod 无报错。
 - [ ] 爬墙到墙角自然翻越时，纵向速度与原版 ClimbHop 一致（不叠加、不改变数值）。
 - [ ] CB / 抓墙跳 / 反墙跳蹭墙角等场景能触发。
 - [ ] 拓展异变禁用抓墙/抓墙跳后，机制仍然生效。
 - [ ] 暂停菜单和 Mod 选项菜单中的开关均能即时启用/禁用机制。
+- [ ] 暂停菜单入口能进入独立界面，ESC / 取消 / “返回”都能回到暂停菜单且不残留菜单实体。
+- [ ] “恢复默认值”按下后所有项回到白字出厂值。
 - [ ] 水平动量未被主动修改。
 - [ ] 无重复触发导致的速度异常或内存泄漏（字典在玩家移除时清理）。
 - [ ] 三种抓键模式（按住 / 反转 / 切换）下 `RequireGrab` 行为都正确。
 - [ ] EVM 打开 `True No Grabbing` 后不再触发；只禁用抓墙时仍然触发。
 - [ ] 地图触发器四种组合（enable/disable × revertOnLeave 开关）行为符合预期，离开房间不残留。
-- [ ] 三色显示：默认白、地图改蓝、玩家改金，改回地图值重新变蓝。
+- [x] 三色显示：默认白、地图改蓝、玩家改金，改回地图值重新变蓝。

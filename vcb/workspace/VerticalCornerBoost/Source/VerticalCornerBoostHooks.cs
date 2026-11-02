@@ -25,21 +25,21 @@ internal static class CornerBoostHooks {
     }
 
     private static void onCreatePauseMenuButtons(Level level, TextMenu menu, bool minimal) {
-        // minimal（简易暂停菜单）不塞自定义项；玩家也可以在 Mod 选项里关掉这个子菜单
+        // minimal（简易暂停菜单）不塞自定义项；玩家也可以在 Mod 选项里关掉这个入口
         if (minimal || !VerticalCornerBoostModule.Settings.ShowPauseMenuSubMenu) {
             return;
         }
 
-        // 传入 Option 时 Option.Added() 会把 Container.InnerContent 改成 TwoColumn，
-        // 那会让暂停菜单所有原版按钮从居中对齐变成靠左。先记下原值（原版是 OneColumn）。
-        TextMenu.InnerContentMode originalInnerContent = menu.InnerContent;
+        // 位置照 EVM：插在“选项”之前（EVM 就是插在 menu_pause_options 前面）。
+        // 找不到就退回追加到末尾。
+        int index = menu.Items.FindIndex(item =>
+            item is TextMenu.Button button && button.Label == Dialog.Clean("menu_pause_options"));
 
-        TextMenuExt.SubMenu subMenu = new TextMenuExt.SubMenu(Dialog.Clean("VCB_MENU_TITLE"), enterOnSelect: false);
-        CornerBoostUI.AddPauseMenuItems(subMenu);
-        menu.Add(subMenu);
-
-        // 必须在 menu.Add(subMenu) 之后还原：子菜单里的项要等子菜单挂进 menu 才会触发 Added()
-        menu.InnerContent = originalInnerContent;
-        menu.RecalculateSize();
+        TextMenu.Item entry = CornerBoostMenu.BuildOpenButton(menu, level);
+        if (index >= 0) {
+            menu.Insert(index, entry);
+        } else {
+            menu.Add(entry);
+        }
     }
 }

@@ -5,8 +5,8 @@ using Microsoft.Xna.Framework;
 namespace Celeste.Mod.VerticalCornerBoost;
 
 /// <summary>
-/// 菜单项的构建器。Mod 选项菜单（CreateXxxEntry）和暂停菜单子菜单共用这一套，
-/// 保证两边的颜色语义完全一致：金=玩家改过、蓝=地图改的、白=默认。
+/// 菜单项的构建器。Mod 选项菜单、暂停菜单里的入口、以及独立的设置界面共用这一套，
+/// 保证颜色语义完全一致：金=玩家改过、蓝=地图改的、白=默认。
 /// </summary>
 internal static class CornerBoostUI {
     public const string PresetPrefix = "modoptions_verticalcornerboostmodule_preset_";
@@ -74,17 +74,30 @@ internal static class CornerBoostUI {
         return item;
     }
 
-    /// <summary>暂停菜单子菜单：只放游玩中真正会改的东西。</summary>
-    public static void AddPauseMenuItems(TextMenuExt.SubMenu subMenu) {
-        subMenu.Add(EnabledItem(Dialog.Clean("VCB_MENU_TOGGLE")));
-        subMenu.Add(RequireGrabItem(Dialog.Clean("VCB_MENU_REQUIRE_GRAB")));
-        subMenu.Add(PresetItem());
-        subMenu.Add(LimitCustomSpeedItem());
+    /// <summary>
+    /// 恢复默认值。语义照 EVM：按下就立刻把值改回默认，不动玩家设置以外的任何东西。
+    /// 速度档位、自定义速度、上限、抓握要求、启用状态全部回到出厂值。
+    /// </summary>
+    public static TextMenu.Item ResetToDefaultItem() {
+        return new TextMenu.Button(Dialog.Clean("VCB_MENU_RESET")).Pressed(() => {
+            Audio.Play("event:/ui/main/button_toggle_on");
+            CornerBoostState.ResetToDefaults();
+        });
+    }
 
-        // 地图固定了速度时，滑块只能显示最近的档位，补一行把真实数值说清楚
+    /// <summary>独立设置界面里的完整内容（暂停菜单入口按进去看到的就是这一套）。</summary>
+    public static void AddSettingsItems(TextMenu menu, bool inGame) {
+        menu.Add(EnabledItem(Dialog.Clean("VCB_MENU_TOGGLE")));
+        menu.Add(RequireGrabItem(Dialog.Clean("VCB_MENU_REQUIRE_GRAB")));
+        menu.Add(PresetItem());
+
+        // 地图把速度钉死了的时候，滑块只能停在最近的档位，补一行把真实数值说清楚
         if (CornerBoostState.MapValues.SpeedUp is float mapSpeed && !CornerBoostState.IsPlayerOverridingSpeed) {
-            subMenu.Add(new TextMenu.SubHeader(string.Format(Dialog.Clean("VCB_MENU_MAP_SPEED"), (int)Math.Round(mapSpeed))));
+            menu.Add(new TextMenu.SubHeader(string.Format(Dialog.Clean("VCB_MENU_MAP_SPEED"), (int)Math.Round(mapSpeed))));
         }
+
+        menu.Add(LimitCustomSpeedItem());
+        menu.Add(ResetToDefaultItem());
     }
 }
 

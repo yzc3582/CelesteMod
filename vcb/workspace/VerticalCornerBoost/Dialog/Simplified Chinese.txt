@@ -7,6 +7,8 @@ VCB_MENU_TITLE=纵向抓角加速
 VCB_MENU_TOGGLE=启用
 VCB_MENU_REQUIRE_GRAB=仅在抓握时触发
 VCB_MENU_MAP_SPEED=地图速度：向上 {0} 像素/秒
+VCB_MENU_RESET=恢复默认值
+VCB_MENU_BACK=返回
 
 modoptions_verticalcornerboostmodule_preset=速度档位
 modoptions_verticalcornerboostmodule_preset_vanilla=原版（向上提供 120 速度）

@@ -45,23 +45,37 @@
 
 ---
 
-## 2. 暂停菜单对齐陷阱（务必别回退）
+## 2. 暂停菜单：为什么是独立界面而不是子菜单
 
-**现象**：加入本 Mod 的开关后，暂停菜单所有文字从居中变成靠左。
+**现状**：暂停菜单里只放一个入口按钮（插在“选项”之前），按进去是**独立界面** `CornerBoostMenu`，
+不是 `TextMenuExt.SubMenu` 那种下拉式子菜单。
 
-**原因**：见上表——任何 `TextMenu.Option` 被 `Added()` 时都会把 `Container.InnerContent` 设成 `TwoColumn`，
-而 `TextMenu.Button` / `SubMenu` 的渲染在 `TwoColumn` 时 justify 从 `0.5` 变 `0`。
+**为什么弃用下拉式子菜单**（两个坑都实机踩过）：
 
-**已采用的做法**（`CornerBoostHooks.onCreatePauseMenuButtons`）：
+1. `TextMenu.Option<T>.Added()` 会把 `Container.InnerContent` 改成 `TwoColumn`，
+   导致暂停菜单所有原版按钮从居中变靠左（要靠 `menu.Add(subMenu)` 之后再还原 `InnerContent` 来救）。
+2. 更致命的是**叠字**：子菜单把所有行挤在固定宽度里，行数一多，各行的 label 和左右箭头就互相压在一起，
+   完全没法看。
 
-1. 先记下 `menu.InnerContent`（原版是 `OneColumn`）；
-2. 建一个 `TextMenuExt.SubMenu`，把 `TextMenu.OnOff` 放进子菜单；
-3. `menu.Add(subMenu)` **之后**再把 `menu.InnerContent` 还原，并 `menu.RecalculateSize()`。
+**独立界面的做法**（照 EVM 的 `AbstractSubmenu`）：
 
-**为什么必须放在最后还原**：`SubMenu.Add(item)` 在 `SubMenu.Container == null` 时只把 item 放进
-`delayedAddItems`，真正的 `item.Added()`（也就是改 `InnerContent` 的那一下）发生在子菜单被加进 menu 之后。
+1. 按钮 `Pressed` 里：记下 `level.PauseMainMenuOpen`，`parentMenu.RemoveSelf()`，把它置 `false`；
+2. 新建一个普通 `TextMenu`，加 `Header` + 选项 + “返回”，`level.Add(menu)`；
+3. `menu.OnESC` / `menu.OnCancel` / “返回”按钮 → `menu.Close()`，`level.Add(parentMenu)` 放回去，
+   恢复 `PauseMainMenuOpen`；
+4. `menu.OnPause` → 直接调 `level.Unpause()`（它会关菜单、播音效、重置 freeze timer），
+   不要自己再关一次，否则音效重复。
 
-**不要**用"把原版按钮 `AlwaysCenter = true`"这种方案，那是在改原版控件。
+这样用的是原版 `TextMenu` 的完整布局：有 header、超长会滚动、选择和返回行为都和原版一致。
+
+---
+
+## 2b. 恢复默认值（语义照 EVM）
+
+界面末尾一个 `TextMenu.Button`，按下调 `CornerBoostState.ResetToDefaults()`：
+把 `Enabled` / `RequireGrab` / `Preset` / `CustomSpeed` / `LimitCustomSpeed` 写回出厂值，
+并 `Overrides.Clear()` 清掉“玩家改过”的标记——否则值虽然回到默认，控件仍会因为残留标记显示成金色，
+而且地图触发器也没法重新生效。只动本 Mod 自己的设置，不碰别的 Mod。
 
 ---
 
@@ -73,7 +87,8 @@
 | `CornerBoostHooks.cs` | 挂/摘 Hook：`On.Celeste.Player.Update`、`Everest.Events.Level.OnCreatePauseMenuButtons` |
 | `CornerBoostLogic.cs` | 几何判定 + 注入 + 双重防叠加；**几何常量在这里** |
 | `CornerBoostState.cs` | 生效值（设置 / 地图覆盖 / 玩家覆盖 + 颜色）、原版速度常量、菜单写值入口 |
-| `CornerBoostUI.cs` | 菜单控件构建（`ColoredOnOff` / `ColoredSlider` / `ColoredButton`），Mod 选项与暂停菜单共用 |
+| `CornerBoostUI.cs` | 菜单控件构建（`ColoredOnOff` / `ColoredSlider` / `ColoredButton`），Mod 选项、暂停入口、独立界面共用 |
+| `CornerBoostMenu.cs` | 暂停菜单入口按钮 + 独立设置界面（照 EVM `AbstractSubmenu` 的摘菜单/放回流程） |
 | `CornerBoostTrigger.cs` | 地图触发器 `VerticalCornerBoost/CornerBoostTrigger` |
 | `VerticalCornerBoostModuleSettings.cs` | 设置项 + 6 个 `Create<属性名>Entry` 覆盖 Everest 默认控件 |
 | `Loenn/triggers/cornerBoostTrigger.lua` | Loenn 里的触发器定义 |
@@ -188,11 +203,12 @@ Speed.Y = target
 
 - [x] 编译通过（`dotnet publish -c Debug -p:CelestePrefix="<Celeste 目录>"` 实测无 error）
 - [x] 暂停菜单开关双向可用（实机确认：关掉后不再触发）
-- [x] 暂停菜单改为子菜单 + 还原 `InnerContent` 修居中（**实机待确认**）
+- [x] 暂停菜单改为独立界面（照 EVM），弃用下拉式子菜单（**实机待确认**）
 - [x] Mod 选项新增 `ShowPauseMenuSubMenu`（**实机待确认**）
 - [x] 中英双语本地化（`Dialog/`，键前缀 `modoptions_verticalcornerboostmodule_`）
 - [x] 速度档位 `Preset` + `CustomSpeed` + `LimitCustomSpeed`（编译通过，**实机待确认**）
-- [x] `RequireGrab`（默认 true，读 `Input.GrabCheck`）+ 暂停菜单子菜单同步（**实机待确认**）
+- [x] `RequireGrab`（默认 true，读 `Input.GrabCheck`）+ 独立界面同步（**实机待确认**）
+- [x] 独立界面 + “恢复默认值”（**实机待确认**）
 - [x] `Enabled` 默认改为 `false`（**实机待确认**：旧存档里的 true 会保留）
 - [x] 地图触发器 `CornerBoostTrigger` + Loenn 定义（**实机待确认**）
 - [x] 三色菜单（`CornerBoostState` + `CornerBoostUI`，Mod 选项与暂停菜单共用；**实机待确认**）

@@ -297,6 +297,24 @@ internal static class CornerBoostState {
         }
     }
 
+    /// <summary>
+    /// 恢复默认值（语义照 EVM 的 Reset to default）：
+    /// 所有设置回到出厂值，并清掉“玩家改过”的标记，让地图触发器重新说了算。
+    /// 只动本 Mod 自己的设置，不碰别的 Mod。
+    /// </summary>
+    public static void ResetToDefaults() {
+        Settings.Enabled = DefaultEnabled;
+        Settings.RequireGrab = DefaultRequireGrab;
+        Settings.Preset = CornerBoostPreset.Vanilla;
+        Settings.CustomSpeed = "120";
+        Settings.LimitCustomSpeed = true;
+
+        // 清掉覆盖标记：值已经回到默认，再留着标记会让控件一直显示成“玩家改过”
+        Overrides.Clear();
+
+        Logger.Log(LogLevel.Info, "VerticalCornerBoost", "Settings reset to defaults.");
+    }
+
     // ==================== 地图触发器登记 ====================
 
     public static void AddEntry(Entity owner, Level level, CornerBoostMapValues values, bool revertOnLeave, bool revertOnDeath,
