@@ -11,7 +11,8 @@ namespace Celeste.Mod.VerticalCornerBoost;
 ///   - 默认离开或死亡时恢复；
 ///   - 值为 Leave 表示这个字段不动；
 ///   - speed = 0 表示不动，正数表示向上速度（px/s）；
-///   - coversScreen = true 时覆盖整个房间。
+///   - coversScreen = true 时覆盖整个房间；
+///   - flag 非空时，只有该 flag 成立（flagInverted 则取反）这条覆盖才生效，每帧现算。
 /// 实体名：VerticalCornerBoost/CornerBoostTrigger
 /// </summary>
 [CustomEntity("VerticalCornerBoost/CornerBoostTrigger")]
@@ -28,6 +29,8 @@ public sealed class CornerBoostTrigger : Trigger {
     private readonly bool revertOnLeave;
     private readonly bool revertOnDeath;
     private readonly bool coversScreen;
+    private readonly string flag;
+    private readonly bool flagInverted;
 
     public CornerBoostTrigger(EntityData data, Vector2 offset) : base(data, offset) {
         enabled = ParseMode(data.Attr("enabled", "leave"));
@@ -36,6 +39,8 @@ public sealed class CornerBoostTrigger : Trigger {
         revertOnLeave = data.Bool("revertOnLeave", true);
         revertOnDeath = data.Bool("revertOnDeath", true);
         coversScreen = data.Bool("coversScreen", false);
+        flag = data.Attr("flag", "");
+        flagInverted = data.Bool("flagInverted", false);
     }
 
     // Loenn / Ahorn 写的是小写枚举名（leave / enable / disable），这里忽略大小写
@@ -71,7 +76,7 @@ public sealed class CornerBoostTrigger : Trigger {
             return;
         }
 
-        CornerBoostState.AddEntry(this, level, values, revertOnLeave, revertOnDeath);
+        CornerBoostState.AddEntry(this, level, values, revertOnLeave, revertOnDeath, flag, flagInverted);
     }
 
     public override void OnLeave(Player player) {

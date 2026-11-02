@@ -30,14 +30,16 @@ internal static class CornerBoostUI {
             0,
             (int)CornerBoostPreset.Custom,
             CornerBoostState.PresetIndex,
-            () => CornerBoostState.SpeedColor);
+            () => CornerBoostState.SpeedColor,
+            () => CornerBoostState.PresetIndex);
         slider.Change(index => CornerBoostState.SetPresetFromMenu((CornerBoostPreset)index));
         return slider;
     }
 
     public static TextMenu.Item CustomSpeedItem(TextMenu menu, bool inGame) {
         ColoredButton button = new ColoredButton(
-            Dialog.Clean("modoptions_verticalcornerboostmodule_customspeed") + ": " + VerticalCornerBoostModule.Settings.CustomSpeed,
+            () => Dialog.Clean("modoptions_verticalcornerboostmodule_customspeed")
+                  + ": " + VerticalCornerBoostModule.Settings.CustomSpeed,
             () => CornerBoostState.CustomSpeedColor);
         button.Pressed(() => {
             Audio.Play("event:/ui/main/savefile_rename_start");
@@ -104,10 +106,24 @@ internal sealed class ColoredOnOff : TextMenu.OnOff {
 /// <summary>带动态颜色的档位滑块。</summary>
 internal sealed class ColoredSlider : TextMenu.Slider {
     private readonly Func<Color> color;
+    private readonly Func<int> syncIndex;
 
-    public ColoredSlider(string label, Func<int, string> values, int min, int max, int value, Func<Color> color)
+    /// <param name="color">每帧现算的颜色。</param>
+    /// <param name="syncIndex">每帧现算的“当前应该停在哪一格”；地图改了速度时滑块也能跟着动。</param>
+    public ColoredSlider(string label, Func<int, string> values, int min, int max, int value, Func<Color> color, Func<int> syncIndex)
         : base(label, values, min, max, value) {
         this.color = color;
+        this.syncIndex = syncIndex;
+    }
+
+    public override void Update() {
+        base.Update();
+        int target = syncIndex();
+        if (target >= 0 && target < Values.Count && target != Index) {
+            // 直接改 Index 而不是调 OnValueChange：这只是“显示同步”，不该反过来写设置
+            Index = target;
+            PreviousIndex = target;
+        }
     }
 
     public override void Render(Vector2 position, bool highlighted) {
@@ -116,12 +132,20 @@ internal sealed class ColoredSlider : TextMenu.Slider {
     }
 }
 
-/// <summary>带动态颜色的按钮（TextMenu.Button 没有 UnselectedColor 字段，只能重画）。</summary>
+/// <summary>带动态颜色和动态文本的按钮（TextMenu.Button 没有 UnselectedColor 字段，只能重画）。</summary>
 internal sealed class ColoredButton : TextMenu.Button {
+    private readonly Func<string> label;
     private readonly Func<Color> color;
 
-    public ColoredButton(string label, Func<Color> color) : base(label) {
+    public ColoredButton(Func<string> label, Func<Color> color) : base(label()) {
+        this.label = label;
         this.color = color;
+    }
+
+    public override void Update() {
+        base.Update();
+        // 自定义速度是文本输入，改完回到菜单时要能看到新值
+        Label = label();
     }
 
     public override void Render(Vector2 position, bool highlighted) {
@@ -131,7 +155,7 @@ internal sealed class ColoredButton : TextMenu.Button {
             : (highlighted ? Container.HighlightColor : color()) * alpha;
         Color strokeColor = Color.Black * (alpha * alpha * alpha);
 
-        // 和暂停菜单里的原版按钮一样：OneColumn 居中，TwoColumn 靠左
+        // 和原版 Button.Render 逐行对应：OneColumn 居中，TwoColumn（或被强制定中）另算
         bool twoColumn = Container.InnerContent == TextMenu.InnerContentMode.TwoColumn && !AlwaysCenter;
         Vector2 drawPosition = position + (twoColumn ? Vector2.Zero : new Vector2(Container.Width * 0.5f, 0f));
         Vector2 justify = twoColumn ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 0.5f);

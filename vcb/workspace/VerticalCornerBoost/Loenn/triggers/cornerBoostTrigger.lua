@@ -11,7 +11,9 @@ cornerBoostTrigger.placements = {
         speed = 0.0,
         revertOnLeave = true,
         revertOnDeath = true,
-        coversScreen = false
+        coversScreen = false,
+        flag = "",
+        flagInverted = false
     }
 }
 

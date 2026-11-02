@@ -8,8 +8,10 @@ namespace Celeste.Mod.VerticalCornerBoost;
 
 /// <summary>
 /// 可以被地图触发器覆盖的字段。
+/// 注意：**成员名是存档键**（写在 <see cref="VerticalCornerBoostModuleSession.PlayerOverrides"/> 里，
+/// YamlDotNet 按名字序列化），要改名字就得同时处理旧存档。
 /// </summary>
-internal enum CornerBoostField {
+public enum CornerBoostField {
     Enabled,
     RequireGrab,
     Speed,
@@ -52,12 +54,47 @@ internal static class CornerBoostState {
         public CornerBoostMapValues Values;
         public bool RevertOnLeave;
         public bool RevertOnDeath;
+        // 可选门控：只有 flag 条件成立时这条覆盖才算数（每帧现算，flag 一变立刻生效）
+        public string Flag;
+        public bool FlagInverted;
+
+        public bool IsActive(Scene scene) {
+            if (Owner == null || Owner.Scene == null || Level != scene) {
+                return false;
+            }
+            if (string.IsNullOrEmpty(Flag) || Level.Session == null) {
+                return true;
+            }
+            bool flag = Level.Session.GetFlag(Flag);
+            return FlagInverted ? !flag : flag;
+        }
     }
 
     private static readonly List<MapEntry> entries = new();
     private static readonly HashSet<CornerBoostField> playerOverrides = new();
 
     private static VerticalCornerBoostModuleSettings Settings => VerticalCornerBoostModule.Settings;
+
+    /// <summary>
+    /// “玩家自己在游戏内改过哪些字段”。存在 Session 里，所以跨重启仍然有效；
+    /// Session 还没加载好（主菜单早期）时退回进程内的那份。
+    /// </summary>
+    private static HashSet<CornerBoostField> Overrides {
+        get {
+            VerticalCornerBoostModuleSession session = SafeSession;
+            return session?.PlayerOverrides ?? playerOverrides;
+        }
+    }
+
+    private static VerticalCornerBoostModuleSession SafeSession {
+        get {
+            try {
+                return VerticalCornerBoostModule.Instance?._Session as VerticalCornerBoostModuleSession;
+            } catch {
+                return null;
+            }
+        }
+    }
 
     /// <summary>原版 ClimbHop 的速度（正数，向上）。</summary>
     public static float DefaultSpeedUp => Math.Abs(CornerBoostLogic.ClimbHopYSpeed);
@@ -68,7 +105,7 @@ internal static class CornerBoostState {
             CornerBoostMapValues merged = default;
             Scene scene = Engine.Scene;
             foreach (MapEntry entry in entries) {
-                if (entry.Owner == null || entry.Level != scene) {
+                if (!entry.IsActive(scene)) {
                     continue;
                 }
                 if (entry.Values.Enabled.HasValue) {
@@ -88,18 +125,18 @@ internal static class CornerBoostState {
     // ==================== 生效值 ====================
 
     public static bool Enabled =>
-        playerOverrides.Contains(CornerBoostField.Enabled)
+        Overrides.Contains(CornerBoostField.Enabled)
             ? Settings.Enabled
             : MapValues.Enabled ?? Settings.Enabled;
 
     public static bool RequireGrab =>
-        playerOverrides.Contains(CornerBoostField.RequireGrab)
+        Overrides.Contains(CornerBoostField.RequireGrab)
             ? Settings.RequireGrab
             : MapValues.RequireGrab ?? Settings.RequireGrab;
 
     /// <summary>当前生效的上升速度（正数）。</summary>
     public static float SpeedUp =>
-        playerOverrides.Contains(CornerBoostField.Speed)
+        Overrides.Contains(CornerBoostField.Speed)
             ? PlayerSpeedUp
             : MapValues.SpeedUp ?? PlayerSpeedUp;
 
@@ -138,13 +175,13 @@ internal static class CornerBoostState {
         return DefaultSpeedUp;
     }
 
-    public static bool IsPlayerOverridingSpeed => playerOverrides.Contains(CornerBoostField.Speed);
+    public static bool IsPlayerOverridingSpeed => Overrides.Contains(CornerBoostField.Speed);
 
     /// <summary>滑块该停在哪一格：优先反映“当前生效速度”，这样地图改速度时能看出来。</summary>
     public static int PresetIndex {
         get {
             CornerBoostMapValues map = MapValues;
-            if (map.SpeedUp.HasValue && !playerOverrides.Contains(CornerBoostField.Speed)) {
+            if (map.SpeedUp.HasValue && !Overrides.Contains(CornerBoostField.Speed)) {
                 return PresetIndexFor(map.SpeedUp.Value);
             }
             return (int)Settings.Preset;
@@ -202,7 +239,7 @@ internal static class CornerBoostState {
     public static Color CustomSpeedColor {
         get {
             if (MapValues.SpeedUp is float mapSpeed) {
-                if (playerOverrides.Contains(CornerBoostField.Speed) && !Near(PlayerSpeedUp, mapSpeed)) {
+                if (Overrides.Contains(CornerBoostField.Speed) && !Near(PlayerSpeedUp, mapSpeed)) {
                     return Color.Goldenrod;
                 }
                 if (!Near(mapSpeed, DefaultSpeedUp)) {
@@ -254,15 +291,16 @@ internal static class CornerBoostState {
     // 玩家选了和地图一样的值，就等于“回到地图设置”，不该再标黄
     private static void UpdateOverride(CornerBoostField field, bool hasMapValue, bool matchesMap) {
         if (hasMapValue && !matchesMap) {
-            playerOverrides.Add(field);
+            Overrides.Add(field);
         } else {
-            playerOverrides.Remove(field);
+            Overrides.Remove(field);
         }
     }
 
     // ==================== 地图触发器登记 ====================
 
-    public static void AddEntry(Entity owner, Level level, CornerBoostMapValues values, bool revertOnLeave, bool revertOnDeath) {
+    public static void AddEntry(Entity owner, Level level, CornerBoostMapValues values, bool revertOnLeave, bool revertOnDeath,
+                                string flag = null, bool flagInverted = false) {
         entries.RemoveAll(e => e.Owner == owner);
         entries.Add(new MapEntry {
             Owner = owner,
@@ -270,6 +308,8 @@ internal static class CornerBoostState {
             Values = values,
             RevertOnLeave = revertOnLeave,
             RevertOnDeath = revertOnDeath,
+            Flag = flag,
+            FlagInverted = flagInverted,
         });
     }
 
@@ -285,6 +325,6 @@ internal static class CornerBoostState {
 
     public static void Clear() {
         entries.Clear();
-        playerOverrides.Clear();
+        // 玩家覆盖存在 Session 里，属于存档状态，这里不清（只清运行时的地图条目）
     }
 }

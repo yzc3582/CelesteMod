@@ -33,6 +33,15 @@
 | `enum` 属性 → `TextMenu.Slider`，**按 enum 数值排序**；每项键为 `modoptions_<前缀>_<属性小写>_<枚举值小写>` | `EverestModule.CreateModMenuSection` |
 | `string` 属性 → `TextMenu.Button` 打开 `OuiModOptionString` 文本输入；**inGame（暂停菜单里）该控件会被禁用** | 同上 |
 | `[SettingMaxLength(n)]` 默认 12、`[SettingMinLength(n)]` 默认 1（string 属性） | 同上 |
+| `Celeste.Input.GrabCheck` 是 `public static bool` 属性，getter 为 `Settings.Instance.GrabMode switch { GrabModes.Invert => !Grab.Check, GrabModes.Toggle => grabToggle, _ => Grab.Check }`；`enum GrabModes { Hold, Invert, Toggle }`；`Input.UpdateGrab()` 在 Toggle 模式下按一下翻转 `grabToggle`，`ResetGrab()` 置 false | `Celeste.Input` |
+| 因此**直接读 `Input.GrabCheck` 就能同时正确处理三种抓键模式**，不要自己去读 `Input.Grab.Check` | 同上 |
+| EVM 的 `TrueNoGrabbing` 是用 `MonoMod.RuntimeDetour.Hook` 钩 `Input.GrabCheck` 的 getter 并直接 `return false`；我们只要读 `Input.GrabCheck` 就自动尊重它 | ExtendedVariantMode 源码 `Variants/TrueNoGrabbing.cs` |
+| `EverestModule.CreateModMenuSection` 会先找设置类上的 `public void Create<属性名>Entry(TextMenu menu, bool inGame)`，找到就调用它并跳过默认控件；子类重写 `CreateModMenuSection` 时 Everest 只加 header | `Celeste.Mod.EverestModule` |
+| `TextMenu.Option<T>` 有 `public Color UnselectedColor = Color.White;`，Render 里 `highlighted ? Container.HighlightColor : UnselectedColor`；子类在 `Render` 里先赋值再 `base.Render` 即可动态标色 | `Celeste.TextMenu.Option<T>` |
+| `TextMenu.Button` **没有**颜色字段，要靠重写 `Render` 自己画（注意 `InnerContent == TwoColumn && !AlwaysCenter` 时靠左） | `Celeste.TextMenu.Button` |
+| `Celeste.Mod.UI.OuiModOptionString.Init<T>(string value, Action<string> onValueChange, int maxValueLength, int minValueLength)` | `Celeste.Mod.UI.OuiModOptionString` |
+| `Celeste.Mod.Entities.CustomEntityAttribute` 在 `Celeste.Mod.Entities` 命名空间（**不是** `Celeste.Mod`），要单独 `using` | 同上 |
+| `Celeste.Trigger`：`public Trigger(EntityData data, Vector2 offset)` 里 `Collider = new Hitbox(data.Width, data.Height)`；`public bool PlayerIsInside { get; private set; }`；`OnEnter/OnStay/OnLeave(Player)` 都是 `virtual` | `Celeste.Trigger` |
 
 ---
 
@@ -62,23 +71,35 @@
 | --- | --- |
 | `VerticalCornerBoostModule.cs` | 模板自带的 Module，`Load/Unload` 只转发给 `CornerBoostHooks` |
 | `CornerBoostHooks.cs` | 挂/摘 Hook：`On.Celeste.Player.Update`、`Everest.Events.Level.OnCreatePauseMenuButtons` |
-| `CornerBoostLogic.cs` | 几何判定 + 注入 + 双重防叠加；**手感常量都在这里** |
-| `VerticalCornerBoostModuleSettings.cs` | `Enabled`（是否启用）、`ShowPauseMenuSubMenu`（暂停菜单是否显示子菜单） |
+| `CornerBoostLogic.cs` | 几何判定 + 注入 + 双重防叠加；**几何常量在这里** |
+| `CornerBoostState.cs` | 生效值（设置 / 地图覆盖 / 玩家覆盖 + 颜色）、原版速度常量、菜单写值入口 |
+| `CornerBoostUI.cs` | 菜单控件构建（`ColoredOnOff` / `ColoredSlider` / `ColoredButton`），Mod 选项与暂停菜单共用 |
+| `CornerBoostTrigger.cs` | 地图触发器 `VerticalCornerBoost/CornerBoostTrigger` |
+| `VerticalCornerBoostModuleSettings.cs` | 设置项 + 6 个 `Create<属性名>Entry` 覆盖 Everest 默认控件 |
+| `Loenn/triggers/cornerBoostTrigger.lua` | Loenn 里的触发器定义 |
 | `Dialog/English.txt`、`Dialog/Simplified Chinese.txt` | 中英双语本地化 |
 
 判定顺序（`CornerBoostLogic.Update`，顺序本身有含义，别随意调换）：
 
 ```text
-Scene == null || Dead            -> 清标记，return
-不满足墙角几何                    -> 清标记，return   （离开墙角才重置，字典条目因此天然有界，不需要额外清理）
-Settings.Enabled == false        -> 清标记，return   （关掉开关要清，否则重开后旧标记会挡住本次墙角）
-Speed.Y >= 0                     -> return           （只处理向上运动，且不标记，之后上冲仍能触发）
-已标记                            -> return           （同一段墙角只处理一次）
+Scene 不是 Level                     -> 清标记，return
+CornerBoostState.Prune(level)        -> 清掉别的房间/已销毁的地图条目
+Dead                                 -> 移除 revertOnDeath 条目 + 清标记，return
+不满足墙角几何                        -> 清标记，return   （离开墙角才重置，字典条目因此天然有界）
+!CornerBoostState.Enabled            -> 清标记，return   （关掉开关要清，否则重开后旧标记会挡住本次墙角）
+RequireGrab && !Input.GrabCheck      -> 清标记，return   （抓握状态，不是抓墙能力）
+Speed.Y >= 0                         -> return           （只处理向上运动，且不标记，之后上冲仍能触发）
+已标记                                -> return           （同一段墙角只处理一次）
 标记 = true
-|Speed.Y - (-120)| < 0.1         -> return           （原版这一帧已经给过了，不叠加）
-Speed.Y < -120                   -> return           （CB/超级墙跳已更快，跟着原版 Math.Min 语义不降速）
-Speed.Y = -120
+|Speed.Y - target| < 0.1             -> return           （原版这一帧已经给过了，不叠加）
+Speed.Y < target                     -> return           （CB/超级墙跳已更快，跟着原版 Math.Min 语义不降速）
+Speed.Y = target
 ```
+
+抓握判定为什么用 `Input.GrabCheck`：它是 `Settings.GrabMode` 的统一出口，
+按住（默认）= `Grab.Check`、反转 = `!Grab.Check`、切换 = `grabToggle`，
+所以三模式天然都对；而且 EVM 的 `True No Grabbing` 就是把它钩成 `false`，我们不需要任何兼容代码。
+**不要**改成 `ClimbCheck()`——那是"能不能抓墙"，会让"抓墙被禁用但仍抓着"的情况失效。
 
 几何判定用"判定盒整体平移"而不是点检测（`Entity.CollideCheck<T>(Vector2 at)`）：
 
@@ -89,8 +110,11 @@ Speed.Y = -120
 
 ## 4. 手感调参入口（开发者看这里）
 
-**速度的唯一出口**：`CornerBoostLogic.TargetSpeed`，由 `Settings.Preset` 决定。
-注入值 **和** "原版是否已生效"的比对基准都必须取它，**不要**再出现写死的 `-120`。
+**速度的唯一出口**：`CornerBoostState.Speed`（负数，直接赋给 `Speed.Y`），
+`CornerBoostState.SpeedUp` 是它的正数形式（菜单/触发器都用正数 px/s）。
+它们的取值顺序是：**玩家覆盖 → 地图触发器覆盖 → 设置档位**。
+注入值 **和** "原版是否已生效"的比对基准都必须取 `CornerBoostState.Speed`，
+**不要**再出现写死的 `-120`，也不要在别处另算一份速度。
 
 | 档位（枚举名） | 显示名 | 向上速度 | 额外上升高度（估算） |
 | --- | --- | --- | --- |
@@ -107,13 +131,47 @@ Speed.Y = -120
 - 为什么 -120 感觉"没力气"：`Speed.Y` 是像素/秒，`Gravity = 900`，额外高度 ≈ `v² / (2g)`。
 - `Vanilla` 档不写死数字：`CornerBoostLogic.ClimbHopYSpeed` 是 `static readonly`，静态初始化时反射读
   `Player.ClimbHopY`（`GetRawConstantValue()`），失败才退回 -120；`Load()` 里会把它打进 `log.txt`。
-  这样游戏/Everest 升级改了常量也能自动跟上。
+  这样游戏/Everest 升级改了常量也能自动跟上。`CornerBoostState.DefaultSpeedUp` 是它的正数镜像。
 - `Custom` 档：`Settings.CustomSpeed` 是 **string**（Everest 给 string 属性生成文本输入按钮），
-  玩家填正数，代码取绝对值再转成向上速度；解析失败 / ≤0 / NaN 一律退回 `-120`。
+  玩家填正数，代码取绝对值再转成向上速度；解析失败 / ≤0 / NaN 一律退回原版值。
 - `Settings.LimitCustomSpeed`（默认 true）把上限压在 1000 px/s；关掉就不设上限（**不推荐**，
   可能出现穿墙观感、摄像机乱飞或卡顿）。真正的输入兜底是 `[SettingMaxLength(6)]`（6 字符）。
 - 几何常量（同在 `CornerBoostLogic.cs`）：`WallGlueDistance`（默认 1f，贴墙判定平移量）、
   `WallTopMargin`（默认 2f，允许墙顶高过玩家头顶的像素数；实机不触发时**优先调这个**，改 4~8）。
+
+### 三色菜单（仿 Extended Variants，但不依赖它）
+
+| 颜色 | 含义 | 判定（`CornerBoostState` 里的 `XxxColor`） |
+| --- | --- | --- |
+| 白 `Color.White` | 默认值 | 当前值 == 地图值，且地图值 == 默认值 |
+| 蓝 `Color.DeepSkyBlue` | 地图触发器改过 | 当前值 == 地图值，但地图值 != 默认值 |
+| 金 `Color.Goldenrod` | 玩家在游戏内自己改过 | 当前值 != 地图值 |
+
+- 比较基准是"地图定义值"（`MapValues`）而不是 Settings；玩家把值改回与地图相同，就自动退回蓝色。
+- 实现方式：`Color` 由 `Func<Color>` 每帧现算，控件在 `Render` 里更新 `UnselectedColor` 或是自己重画，
+  **不要**在创建控件时算一次颜色缓存下来，否则改完值颜色不会变。
+- `CustomSpeed` 输入框本身不标黄（它只是"速度"的另一种表示）；只有"地图给了速度、玩家又填了别的数"时才标黄。
+
+### 地图触发器的语义（`CornerBoostTrigger`）
+
+- 三个字段都可以是"不改"：`enabled` / `requireGrab` 用 `leave`，`speed` 用 `0`。
+- `revertOnLeave`（默认 true）：离开触发器时撤销；为 false 时效果一直留到离开房间（换房/重进关会重建）。
+- `revertOnDeath`（默认 true）：死亡时撤销；`Player.Update` 里检测到 `Dead` 就移除这些条目。
+- `coversScreen`：把 Collider 扩到整间 `Level.Bounds`，等价于"进房间即生效"。
+- `flag` / `flagInverted`：非空时，只有 `Level.Session.GetFlag(flag)` 成立（`flagInverted` 取反）这条覆盖才算数；
+  **每帧现算**（`MapEntry.IsActive`），所以 flag 一变立刻生效，不需要进出触发器。
+- 覆盖值**只存在内存里**（`CornerBoostState` 的条目表），不写 Settings，所以不会污染玩家存档。
+
+### 玩家覆盖为什么放在 Session 里
+
+`VerticalCornerBoostModuleSession.PlayerOverrides`（`HashSet<CornerBoostField>`）记录"玩家在游戏内改过哪些字段"。
+如果只放在 static 字段里，重启游戏后这个状态会丢，而设置值仍然持久化，
+结果就是**下次进图时地图值会静默盖掉玩家自己设的值**；放进 Session 后语义和 EVM 的
+`Session.VariantsOverridenByUser` 一致，跨重启仍然保持"玩家优先"。
+
+- `CornerBoostField` 因此必须是 `public`（Session 的属性类型不能比属性本身更难访问）。
+- **枚举成员名是存档键**，改名要处理旧存档。
+- `CornerBoostState.Clear()`（Unload 时调用）**只清地图条目**，不动玩家覆盖。
 
 ### 多版本策略（已决策：单 DLL + 档位，不要再加变体）
 
@@ -134,8 +192,15 @@ Speed.Y = -120
 - [x] Mod 选项新增 `ShowPauseMenuSubMenu`（**实机待确认**）
 - [x] 中英双语本地化（`Dialog/`，键前缀 `modoptions_verticalcornerboostmodule_`）
 - [x] 速度档位 `Preset` + `CustomSpeed` + `LimitCustomSpeed`（编译通过，**实机待确认**）
-- [ ] 抓墙被 Extended Variants 禁用时是否仍触发
+- [x] `RequireGrab`（默认 true，读 `Input.GrabCheck`）+ 暂停菜单子菜单同步（**实机待确认**）
+- [x] `Enabled` 默认改为 `false`（**实机待确认**：旧存档里的 true 会保留）
+- [x] 地图触发器 `CornerBoostTrigger` + Loenn 定义（**实机待确认**）
+- [x] 三色菜单（`CornerBoostState` + `CornerBoostUI`，Mod 选项与暂停菜单共用；**实机待确认**）
+- [ ] 抓墙被 Extended Variants 禁用时是否仍触发（预期：仍触发）
+- [ ] EVM `True No Grabbing` 时是否被挡住（预期：挡住）
+- [ ] 三种抓键模式实测
 - [ ] CB / 抓墙跳 / 反墙跳蹭墙角各场景实测
+- [ ] 地图触发器的 revertOnLeave / revertOnDeath / coversScreen 实测
 - [ ] 手感微调（`WallTopMargin`；档位默认值不要动，保持 `Vanilla` = -120）
 
 ---
@@ -150,3 +215,9 @@ Speed.Y = -120
 - 产物落在 `VerticalCornerBoost\bin\VerticalCornerBoost.dll`（`everest.yaml` 里写的就是 `bin/...`）。
 - 装进游戏：把整个 `VerticalCornerBoost` 文件夹复制到 `<Celeste>\Mods\`。
 - 反编译临时文件不要写进工作区（用 `%TEMP%`）。
+- 反编译命令：`ilspycmd -t <类型全名> "<Celeste 目录>\\Celeste.dll"`；
+  `ilspycmd` 装在 `C:\\Users\\Lenovo\\.dotnet\\tools\\ilspycmd.cmd`，不在 PATH 上时要写全路径。
+- **本机沙箱注意**：DSH workspace-write 模式下 `dotnet` 写 `Source/obj` 会被拒
+  （`UnauthorizedAccessException`），编译那一步需要完全访问；文件编辑工具本身不受影响。
+- 抓不到外网时 `git clone` / `curl` 会被挡，但 `python -c "import urllib.request..."` 可用，
+  需要参考开源 mod 源码时可以这样把 tarball 拉到 `%TEMP%`（EVM 源码就是这么取的）。

@@ -52,8 +52,34 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
   - 前方上方一定高度内**没有** `Solid`（表示墙顶就在附近）。
   - `self.Speed.Y < 0`（正在向上运动）。
   - （提示：“前方短距离内有 `Solid`”可参考抓墙跳的距离）
-- **注入**：`self.Speed.Y = CornerBoostLogic.TargetSpeed`（默认等于原版 ClimbHop 的 `-120f`，可由速度档位设置调整）。
+- **注入**：`self.Speed.Y = CornerBoostState.Speed`（默认等于原版 ClimbHop 的 `-120f`，可被速度档位或地图触发器改掉）。
 - **防重复**：用 `Dictionary<Player, bool>` 或附加 `Component` 标记“本次墙角事件已处理”；离开墙角区域（不再满足几何条件）时重置。
+
+判定顺序（`CornerBoostLogic.Update`，顺序本身有含义）：
+`Scene 不是 Level` → 清标记；`Prune` 掉别的房间的地图条目；`Dead` → 移除 `revertOnDeath` 条目并清标记；
+`不满足墙角几何` → 清标记；`!CornerBoostState.Enabled` → 清标记；
+`RequireGrab && !Input.GrabCheck` → 清标记；`Speed.Y >= 0` → 直接返回（不标记）；
+`已标记` → 返回；标记；`|Speed.Y - target| < 0.1` → 返回；`Speed.Y < target` → 返回；否则注入目标速度。
+
+## 暂停菜单与 Mod 选项
+
+- 订阅 `Everest.Events.Level.OnCreatePauseMenuButtons`；`minimal == false` 且 `Settings.ShowPauseMenuSubMenu` 时插入子菜单。
+- 子菜单和 Mod 选项菜单都通过 `CornerBoostUI` 构建控件（`ColoredOnOff` / `ColoredSlider` / `ColoredButton`），
+  颜色每帧按 `CornerBoostState` 现算：金 = 玩家在游戏内改过、蓝 = 地图触发器改过、白 = 默认。
+- Mod 选项菜单通过设置类里的 `public void Create<属性名>Entry(TextMenu, bool)` 覆盖 Everest 的默认项
+  （Everest 一旦发现子类重写了 `CreateModMenuSection` 或存在这些方法，就不再自动生成对应控件）。
+- `CustomSpeed` 用 `OuiModOptionString` 输入，`inGame` 时按钮禁用（与 Everest 默认行为一致）。
+
+## 地图触发器（Helper 式）
+
+- 实体名 `VerticalCornerBoost/CornerBoostTrigger`（`[CustomEntity]`，Loenn 定义在 `Loenn/triggers/cornerBoostTrigger.lua`）。
+- 字段：`enabled` / `requireGrab`（`leave` / `enable` / `disable`，默认 `leave` 即不改）、
+  `speed`（正数 = 向上速度 px/s，`0` = 不改）、`revertOnLeave`（默认 true）、`revertOnDeath`（默认 true）、
+  `coversScreen`（默认 false，为 true 时覆盖整间房间）、
+  `flag` / `flagInverted`（flag 非空时，只有该 flag 成立（可反转）这条覆盖才生效，每帧现算）。
+- 覆盖值**不写入 Settings**，只存在于运行时（`CornerBoostState` 的条目表），因此不会污染存档；
+  玩家在游戏内改值时该字段转为“玩家覆盖”，优先级高于地图，改回与地图相同的值则退回地图值（重新变蓝）。
+- 语义借鉴 Extended Variants 的触发器，但**不依赖 EVM**：不引用其程序集、`everest.yaml` 不加其依赖。
 
 ## 防叠加策略（双重保险）
 
@@ -62,10 +88,13 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 ## 暂停菜单开关实现
 
-- 订阅 `Everest.Events.Level.OnCreatePauseMenuButtons`。
-- 在 `minimal == false` 时创建 `TextMenu.OnOff("Vertical Corner Boost", Settings.Enabled)`。
-- `Change` 回调写入 `Settings.Enabled`，与 Mod 选项菜单共享同一设置源。
-- 在 `Unload` 中取消订阅。
+见上文“暂停菜单与 Mod 选项”：子菜单通过 `CornerBoostUI.AddPauseMenuItems` 构建，
+`Change` 回调统一走 `CornerBoostState.SetXxxFromMenu`，与 Mod 选项菜单共享同一设置源。
+
+### 对齐陷阱（别回退）
+
+`TextMenu.Option<T>.Added()` 会把 `Container.InnerContent` 改成 `TwoColumn`，导致暂停菜单所有文字靠左。
+所以必须先记下原值，`menu.Add(subMenu)` **之后**再还原并 `RecalculateSize()`。
 
 ## 开发环境
 
@@ -92,3 +121,7 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 - [ ] 暂停菜单和 Mod 选项菜单中的开关均能即时启用/禁用机制。
 - [ ] 水平动量未被主动修改。
 - [ ] 无重复触发导致的速度异常或内存泄漏（字典在玩家移除时清理）。
+- [ ] 三种抓键模式（按住 / 反转 / 切换）下 `RequireGrab` 行为都正确。
+- [ ] EVM 打开 `True No Grabbing` 后不再触发；只禁用抓墙时仍然触发。
+- [ ] 地图触发器四种组合（enable/disable × revertOnLeave 开关）行为符合预期，离开房间不残留。
+- [ ] 三色显示：默认白、地图改蓝、玩家改金，改回地图值重新变蓝。
