@@ -12,13 +12,21 @@ internal static class CornerBoostUI {
     public const string PresetPrefix = "modoptions_verticalcornerboostmodule_preset_";
 
     public static TextMenu.Item EnabledItem(string label) {
-        ColoredOnOff item = new ColoredOnOff(label, CornerBoostState.Enabled, () => CornerBoostState.EnabledColor);
+        ColoredOnOff item = new ColoredOnOff(
+            label,
+            CornerBoostState.Enabled,
+            () => CornerBoostState.EnabledColor,
+            () => CornerBoostState.Enabled);
         item.Change(CornerBoostState.SetEnabledFromMenu);
         return item;
     }
 
     public static TextMenu.Item RequireGrabItem(string label) {
-        ColoredOnOff item = new ColoredOnOff(label, CornerBoostState.RequireGrab, () => CornerBoostState.RequireGrabColor);
+        ColoredOnOff item = new ColoredOnOff(
+            label,
+            CornerBoostState.RequireGrab,
+            () => CornerBoostState.RequireGrabColor,
+            () => CornerBoostState.RequireGrab);
         item.Change(CornerBoostState.SetRequireGrabFromMenu);
         return item;
     }
@@ -60,7 +68,8 @@ internal static class CornerBoostUI {
         ColoredOnOff item = new ColoredOnOff(
             Dialog.Clean("modoptions_verticalcornerboostmodule_limitcustomspeed"),
             VerticalCornerBoostModule.Settings.LimitCustomSpeed,
-            () => CornerBoostState.LimitCustomSpeedColor);
+            () => CornerBoostState.LimitCustomSpeedColor,
+            () => VerticalCornerBoostModule.Settings.LimitCustomSpeed);
         item.Change(on => VerticalCornerBoostModule.Settings.LimitCustomSpeed = on);
         return item;
     }
@@ -69,7 +78,8 @@ internal static class CornerBoostUI {
         ColoredOnOff item = new ColoredOnOff(
             Dialog.Clean("modoptions_verticalcornerboostmodule_showpausemenusubmenu"),
             VerticalCornerBoostModule.Settings.ShowPauseMenuSubMenu,
-            () => CornerBoostState.ShowPauseMenuSubMenuColor);
+            () => CornerBoostState.ShowPauseMenuSubMenuColor,
+            () => VerticalCornerBoostModule.Settings.ShowPauseMenuSubMenu);
         item.Change(on => VerticalCornerBoostModule.Settings.ShowPauseMenuSubMenu = on);
         return item;
     }
@@ -104,9 +114,25 @@ internal static class CornerBoostUI {
 /// <summary>带动态颜色的 OnOff。</summary>
 internal sealed class ColoredOnOff : TextMenu.OnOff {
     private readonly Func<Color> color;
+    private readonly Func<bool> syncValue;
 
-    public ColoredOnOff(string label, bool value, Func<Color> color) : base(label, value) {
+    /// <param name="color">每帧现算的颜色。</param>
+    /// <param name="syncValue">每帧现算的“当前真实值”；外部（恢复默认值 / 地图触发器）改了状态时，
+    /// 开关也能跟着翻到正确的一侧。</param>
+    public ColoredOnOff(string label, bool value, Func<Color> color, Func<bool> syncValue) : base(label, value) {
         this.color = color;
+        this.syncValue = syncValue;
+    }
+
+    public override void Update() {
+        base.Update();
+        // Values 里 0 = 关、1 = 开（TextMenu.OnOff 的构造顺序）
+        int target = syncValue() ? 1 : 0;
+        if (target != Index && target >= 0 && target < Values.Count) {
+            // 只同步显示，不调 OnValueChange，避免反过来又写一遍设置
+            Index = target;
+            PreviousIndex = target;
+        }
     }
 
     public override void Render(Vector2 position, bool highlighted) {
