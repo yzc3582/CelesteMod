@@ -1,7 +1,7 @@
-local cornerBoostTrigger = {}
+local verticalCornerBoostTrigger = {}
 
-cornerBoostTrigger.name = "VerticalCornerBoost/CornerBoostTrigger"
-cornerBoostTrigger.placements = {
+verticalCornerBoostTrigger.name = "VerticalCornerBoost/VerticalCornerBoostTrigger"
+verticalCornerBoostTrigger.placements = {
     {
         name = "trigger",
         data = {
@@ -22,7 +22,7 @@ cornerBoostTrigger.placements = {
     }
 }
 
-cornerBoostTrigger.fieldInformation = {
+verticalCornerBoostTrigger.fieldInformation = {
     enabled = {
         options = {
             { "Leave unchanged", "leave" },
@@ -45,4 +45,4 @@ cornerBoostTrigger.fieldInformation = {
     }
 }
 
-return cornerBoostTrigger
+return verticalCornerBoostTrigger

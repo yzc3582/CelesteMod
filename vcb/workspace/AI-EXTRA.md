@@ -89,17 +89,28 @@
 | `CornerBoostState.cs` | 生效值（设置 / 地图覆盖 / 玩家覆盖 + 颜色）、原版速度常量、菜单写值入口 |
 | `CornerBoostUI.cs` | 菜单控件构建（`ColoredOnOff` / `ColoredSlider` / `ColoredButton`），Mod 选项、暂停入口、独立界面共用 |
 | `CornerBoostMenu.cs` | 暂停菜单入口按钮 + 独立设置界面（照 EVM `AbstractSubmenu` 的摘菜单/放回流程） |
-| `CornerBoostTrigger.cs` | 地图触发器 `VerticalCornerBoost/CornerBoostTrigger` |
+| `VerticalCornerBoostTrigger.cs` | 地图触发器 `VerticalCornerBoost/VerticalCornerBoostTrigger` |
 | `VerticalCornerBoostModuleSettings.cs` | 设置项 + 6 个 `Create<属性名>Entry` 覆盖 Everest 默认控件 |
-| `Loenn/triggers/cornerBoostTrigger.lua` | Loenn 里的触发器定义 |
-| `Ahorn/triggers/cornerBoostTrigger.jl` | Ahorn 里的触发器定义 |
+| `Loenn/triggers/verticalCornerBoostTrigger.lua` | Loenn 里的触发器定义 |
+| `Ahorn/triggers/verticalCornerBoostTrigger.jl` | Ahorn 里的触发器定义 |
 | `Dialog/English.txt`、`Dialog/Simplified Chinese.txt` | 中英双语本地化 |
+
+### 触发器为什么叫 VerticalCornerBoostTrigger 而不是 CornerBoostTrigger
+
+**原版 Celeste 就有名为 "Corner Boost"（CB）的技巧**。把触发器叫 `CornerBoostTrigger`，
+mapper 在编辑器里会以为它和那个既有技巧有关（比如以为能改 CB 的行为）。
+所以实体名、类名、两个编辑器定义的文件名**全都带 Vertical**。
+
+- 已经**决定不做旧名别名**：`CustomEntity` 支持多 ID（`params string[] ids`），
+  技术上可以同时注册 `VerticalCornerBoost/CornerBoostTrigger` 当兼容别名，
+  但那样旧名会继续出现在 mapper 的搜索里，歧义仍在，所以彻底断开。
+- **不要**为了让"旧地图兼容"再加回别名，除非确实有已发布的图用了旧名。
 
 ### 触发器尺寸为什么"能改"，以及别把它写死
 
 `width` / `height` 在编辑器定义里**只是放置时的默认值**，玩家随时拖拽缩放。依据（都查过源码/反编译）：
 
-- **C# 侧**：`CornerBoostTrigger` 的 ctor 只调 `base(data, offset)`；
+- **C# 侧**：`VerticalCornerBoostTrigger` 的 ctor 只调 `base(data, offset)`；
   `Celeste.Trigger` 的 ctor 里是 `Collider = new Hitbox(data.Width, data.Height)`。
   **不要**在子类里再写 `new Hitbox(8, 8)` 之类，那才会真的把尺寸钉死。
   唯一的例外是 `coversScreen`：它主动把 Collider 换成整间房间，这是有意的。
@@ -187,7 +198,7 @@ Speed.Y = target
   **不要**在创建控件时算一次颜色缓存下来，否则改完值颜色不会变。
 - `CustomSpeed` 输入框本身不标黄（它只是"速度"的另一种表示）；只有"地图给了速度、玩家又填了别的数"时才标黄。
 
-### 地图触发器的语义（`CornerBoostTrigger`）
+### 地图触发器的语义（`VerticalCornerBoostTrigger`）
 
 - 三个字段都可以是"不改"：`enabled` / `requireGrab` 用 `leave`，`speed` 用 `0`。
 - `revertOnLeave`（默认 true）：离开触发器时撤销；为 false 时效果一直留到离开房间（换房/重进关会重建）。
@@ -230,7 +241,7 @@ Speed.Y = target
 - [x] `RequireGrab`（默认 true，读 `Input.GrabCheck`）+ 独立界面同步（**实机待确认**）
 - [x] 独立界面 + “恢复默认值”（**实机待确认**）
 - [x] `Enabled` 默认改为 `false`（**实机待确认**：旧存档里的 true 会保留）
-- [x] 地图触发器 `CornerBoostTrigger` + Loenn 定义（**实机待确认**）
+- [x] 地图触发器 `VerticalCornerBoostTrigger` + Loenn 定义（**实机待确认**）
 - [x] 三色菜单（`CornerBoostState` + `CornerBoostUI`，Mod 选项与暂停菜单共用；**实机待确认**）
 - [ ] 抓墙被 Extended Variants 禁用时是否仍触发（预期：仍触发）
 - [ ] EVM `True No Grabbing` 时是否被挡住（预期：挡住）

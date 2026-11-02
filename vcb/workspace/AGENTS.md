@@ -6,7 +6,7 @@
 - **English**: Vertical Corner Boost
 - **代号 / 内部命名**: `VerticalCornerBoost`（旧分支曾用 `Corner Hop Assist`，已弃用）
 - **类型**: Celeste Everest 代码 Mod，主要注入玩家移动逻辑；另提供一个地图触发器
-  `VerticalCornerBoost/CornerBoostTrigger`（见下文"地图触发器"），不添加其它实体。
+  `VerticalCornerBoost/VerticalCornerBoostTrigger`（见下文"地图触发器"），不添加其它实体。
 - **目标游戏**: Celeste (PC) + Everest（注：路径见目录下 `Celeste.txt`）
 - 更多额外内容见目录下 `EXTRA.md`
 - **AI 代理开工前必读 [`AI-EXTRA.md`](AI-EXTRA.md)**：已反编译验证的 API 事实、
@@ -82,8 +82,8 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 ## 地图触发器（Helper 式）
 
-- 实体名 `VerticalCornerBoost/CornerBoostTrigger`（`[CustomEntity]`）。
-  编辑器定义：`Loenn/triggers/cornerBoostTrigger.lua`、`Ahorn/triggers/cornerBoostTrigger.jl`。
+- 实体名 `VerticalCornerBoost/VerticalCornerBoostTrigger`（`[CustomEntity]`）。
+  编辑器定义：`Loenn/triggers/verticalCornerBoostTrigger.lua`、`Ahorn/triggers/verticalCornerBoostTrigger.jl`。
 - **尺寸可自由拉伸**：`width` / `height` 只是放置时的默认值，不是写死的尺寸。
   C# 侧不碰尺寸——基类 `Trigger(data, offset)` 执行 `Collider = new Hitbox(data.Width, data.Height)`；
   Loenn 侧 `entities.canResize` 在 handler 没定义 `canResize` 时回退成
@@ -134,10 +134,16 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 
 - 版本号写在 `VerticalCornerBoost/everest.yaml` 的 `Version:` 字段，**每个功能改动/修复都要自己升一次**，
   不要等用户提醒，也不要让它和实际内容脱节。
-- 规则：加功能 → 升次版本号（`1.1.x` → `1.2.0`）；修 bug / 只改文案与定义 → 升修订号（`1.1.1` → `1.1.2`）。
+- 规则（只动 `Version:` 一行，别动 `Dependencies`）：
+  - **破坏性变更 → 升次版本号**：实体/属性/**存档键**改名、删除已有设置项、改变已发布的语义。
+    典型例子：`CornerBoostTrigger` → `VerticalCornerBoostTrigger`（已放置的旧触发器会失效）→ `1.2.0`。
+  - **加功能 → 升次版本号**（`1.1.x` → `1.2.0`）。
+  - **修 bug / 只改文案与定义 → 升修订号**（`1.1.1` → `1.1.2`）。
+  - **拿不准就问用户**，不要自作主张往高里升。多升和少升一样有害：白占版本号、破坏语义化版本的
+    可预期性，用户按版本号判断"要不要重放地图/重设存档"时会失准。
+  - 只有**确实会让已发布内容失效**才算破坏性；"改了代码但对外行为不变"不算。
 - 参考发布历史（**不要重新造这些旧版本**，仓库有 git 管理）：`v0.6.0` 初版 → `v1.0.0` 暂停菜单 UI 炸掉的那版 →
-  `v1.1.0` 尚无 Ahorn 支持 → `v1.1.1` 当前。
-- 只改 `Version` 一行，别动 `Dependencies`。
+  `v1.1.0` 尚无 Ahorn 支持 → `v1.1.1` → `v1.2.0` 触发器改名 `VerticalCornerBoostTrigger`（破坏性）。
 
 ## 验证清单（部分可由人类验证）
 

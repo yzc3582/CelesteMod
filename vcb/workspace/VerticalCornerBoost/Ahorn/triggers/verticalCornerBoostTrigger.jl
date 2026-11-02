@@ -1,4 +1,4 @@
-module VCB_CornerBoostTrigger
+module VCB_VerticalCornerBoostTrigger
 
 using ..Ahorn, Maple
 
@@ -6,7 +6,10 @@ using ..Ahorn, Maple
 # Ahorn 就会把它当成可拖动缩放的矩形触发器。
 # enabled / requireGrab 用 String 接收（leave / enable / disable），
 # C# 侧走 Enum.TryParse(ignoreCase: true)，不在乎大小写。
-@mapdef Trigger "VerticalCornerBoost/CornerBoostTrigger" CornerBoostTrigger(
+#
+# 名字里保留 "Vertical"：原版 "Corner Boost"（CB）是另一个已有技巧，
+# 不加 Vertical 会让 mapper 误解。
+@mapdef Trigger "VerticalCornerBoost/VerticalCornerBoostTrigger" VerticalCornerBoostTrigger(
     x::Integer, y::Integer,
     width::Integer=16, height::Integer=16,
     enabled::String="leave",
@@ -20,7 +23,7 @@ using ..Ahorn, Maple
 
 const placements = Ahorn.PlacementDict(
     "Vertical Corner Boost Trigger (Vertical Corner Boost)" => Ahorn.EntityPlacement(
-        CornerBoostTrigger,
+        VerticalCornerBoostTrigger,
         "rectangle"
     )
 )

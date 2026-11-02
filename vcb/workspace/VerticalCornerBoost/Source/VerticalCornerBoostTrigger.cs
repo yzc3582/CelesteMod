@@ -13,10 +13,13 @@ namespace Celeste.Mod.VerticalCornerBoost;
 ///   - speed = 0 表示不动，正数表示向上速度（px/s）；
 ///   - coversScreen = true 时覆盖整个房间；
 ///   - flag 非空时，只有该 flag 成立（flagInverted 则取反）这条覆盖才生效，每帧现算。
-/// 实体名：VerticalCornerBoost/CornerBoostTrigger
+///
+/// 实体名：VerticalCornerBoost/VerticalCornerBoostTrigger
+/// 名字里刻意保留 "Vertical"：原版游戏里的 "Corner Boost"（CB）是另一个已有技巧，
+/// 用 CornerBoostTrigger 会让 mapper 误以为和那个技巧有关。
 /// </summary>
-[CustomEntity("VerticalCornerBoost/CornerBoostTrigger")]
-public sealed class CornerBoostTrigger : Trigger {
+[CustomEntity("VerticalCornerBoost/VerticalCornerBoostTrigger")]
+public sealed class VerticalCornerBoostTrigger : Trigger {
     public enum Mode {
         Leave,
         Enable,
@@ -32,7 +35,7 @@ public sealed class CornerBoostTrigger : Trigger {
     private readonly string flag;
     private readonly bool flagInverted;
 
-    public CornerBoostTrigger(EntityData data, Vector2 offset) : base(data, offset) {
+    public VerticalCornerBoostTrigger(EntityData data, Vector2 offset) : base(data, offset) {
         enabled = ParseMode(data.Attr("enabled", "leave"));
         requireGrab = ParseMode(data.Attr("requireGrab", "leave"));
         speed = data.Float("speed", 0f);
