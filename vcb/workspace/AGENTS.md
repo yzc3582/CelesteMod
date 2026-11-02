@@ -130,6 +130,15 @@ Mod 默认**不启用**（`Settings.Enabled = false`），玩家在 Mod 选项�
 - **EverestAPI/ExampleMod**：作为标准 Everest 代码模式的参考语料。
 - **Everest Wiki / `#modding_help`（Discord）**：API 和 Hook 问题的最终依据。
 
+## 版本号（每次改动都要动它）
+
+- 版本号写在 `VerticalCornerBoost/everest.yaml` 的 `Version:` 字段，**每个功能改动/修复都要自己升一次**，
+  不要等用户提醒，也不要让它和实际内容脱节。
+- 规则：加功能 → 升次版本号（`1.1.x` → `1.2.0`）；修 bug / 只改文案与定义 → 升修订号（`1.1.1` → `1.1.2`）。
+- 参考发布历史（**不要重新造这些旧版本**，仓库有 git 管理）：`v0.6.0` 初版 → `v1.0.0` 暂停菜单 UI 炸掉的那版 →
+  `v1.1.0` 尚无 Ahorn 支持 → `v1.1.1` 当前。
+- 只改 `Version` 一行，别动 `Dependencies`。
+
 ## 验证清单（部分可由人类验证）
 
 - [x] 编译通过，并在游戏中加载 Mod 无报错。
