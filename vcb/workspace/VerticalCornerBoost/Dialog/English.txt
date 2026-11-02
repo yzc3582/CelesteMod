@@ -19,3 +19,4 @@ modoptions_verticalcornerboostmodule_preset_mmtgd=MMTGD (400 px/s upward)
 modoptions_verticalcornerboostmodule_preset_custom=Custom
 modoptions_verticalcornerboostmodule_customspeed=Custom speed (positive number, becomes upward)
 modoptions_verticalcornerboostmodule_limitcustomspeed=Limit custom speed (not recommended to turn off)
+modoptions_verticalcornerboostmodule_resettodefault=Reset to default

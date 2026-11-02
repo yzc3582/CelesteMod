@@ -67,6 +67,11 @@ public class VerticalCornerBoostModuleSettings : EverestModuleSettings {
 
     public void CreateLimitCustomSpeedEntry(TextMenu menu, bool inGame) {
         menu.Add(CornerBoostUI.LimitCustomSpeedItem());
+
+        // 恢复默认值没有对应属性，Everest 不会为它调用 CreateXxxEntry，
+        // 所以挂在最后一个属性的 Entry 末尾，让它在 Mod 选项里也出现在最后一项。
+        // 注意：这里不能加 SubHeader 分隔，否则会和其它 Mod 的分区之间多出一块空白。
+        menu.Add(CornerBoostUI.ResetToDefaultItem(Dialog.Clean("modoptions_verticalcornerboostmodule_resettodefault")));
     }
 }
 

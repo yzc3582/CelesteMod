@@ -86,10 +86,11 @@ internal static class CornerBoostUI {
 
     /// <summary>
     /// 恢复默认值。语义照 EVM：按下就立刻把值改回默认，不动玩家设置以外的任何东西。
-    /// 速度档位、自定义速度、上限、抓握要求、启用状态全部回到出厂值。
+    /// 速度档位、自定义速度、上限、抓握要求、启用状态、暂停菜单入口全部回到出厂值。
     /// </summary>
-    public static TextMenu.Item ResetToDefaultItem() {
-        return new TextMenu.Button(Dialog.Clean("VCB_MENU_RESET")).Pressed(() => {
+    /// <param name="label">显示名。Mod 选项与暂停菜单各用各的本地化键。</param>
+    public static TextMenu.Item ResetToDefaultItem(string label) {
+        return new TextMenu.Button(label).Pressed(() => {
             Audio.Play("event:/ui/main/button_toggle_on");
             CornerBoostState.ResetToDefaults();
         });
@@ -107,7 +108,7 @@ internal static class CornerBoostUI {
         }
 
         menu.Add(LimitCustomSpeedItem());
-        menu.Add(ResetToDefaultItem());
+        menu.Add(ResetToDefaultItem(Dialog.Clean("VCB_MENU_RESET")));
     }
 }
 

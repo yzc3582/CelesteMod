@@ -19,3 +19,4 @@ modoptions_verticalcornerboostmodule_preset_mmtgd=MMTGD（向上提供 400 速�
 modoptions_verticalcornerboostmodule_preset_custom=自定义
 modoptions_verticalcornerboostmodule_customspeed=自定义速度（填正数，自动转为向上）
 modoptions_verticalcornerboostmodule_limitcustomspeed=限制自定义速度上限（不推荐关闭）
+modoptions_verticalcornerboostmodule_resettodefault=恢复默认值
