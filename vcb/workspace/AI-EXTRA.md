@@ -254,11 +254,23 @@ Speed.Y = target
 
 ## 6. 构建备忘
 
-- 工作区**没有** `Celeste.dll`，必须传 `CelestePrefix` 指向 `Celeste.txt` 里的目录：
+- **首选：在工作区根目录跑 `build-release.bat`**。
+  - 无参数 = Release 编译 + 生成 `VerticalCornerBoost\VerticalCornerBoost.zip`；
+  - `--no-zip` = 只编译（Debug，不打包）；
+  - 它自己从 `Celeste.txt` 读游戏目录，**不需要手敲 `CelestePrefix`**；
+  - **该文件必须保持纯 ASCII + CRLF**：cmd.exe 用 OEM 代码页（中文系统是 GBK）解析批处理，
+    写中文或存成 LF 会导致语法错乱（已踩过：`'m' 不是内部或外部命令` 这类乱码报错）。
+- **Release 包不带 `.pdb`**：`PackageMod` 的 `FilesToPackage` 用 `Exclude` 排除调试符号
+  （省体积、不暴露源码路径）。包内应只有 `everest.yaml` / `bin/*.dll` / `Dialog/` / `Maps/` / `Ahorn/` / `Loenn/`。
+- `PackageMod` 的 `Condition` 是 `'$(Configuration)' == 'Release'`，Debug 不打包；
+  其 `Inputs`/`Outputs` 已移除——通配符配单文件名的增量比较不可靠，改为每次 Release 都重新打包。
+
+- 手动构建（等价的底层命令，一般不需要）：
   ```bat
-  cd VerticalCornerBoost\Source
-  dotnet publish -c Debug -p:CelestePrefix="D:\...\Steam\steamapps\common\Celeste"
+  dotnet publish VerticalCornerBoost\Source\VerticalCornerBoost.csproj -c Release -p:CelestePrefix="<Celeste 目录>"
   ```
+  工作区**没有** `Celeste.dll`，必须传 `CelestePrefix`（默认的 `lib-stripped` 不存在）。
+  注意末尾要加 `-c Release` 才会顺带打包。
 - 产物落在 `VerticalCornerBoost\bin\VerticalCornerBoost.dll`（`everest.yaml` 里写的就是 `bin/...`）。
 - 装进游戏：把整个 `VerticalCornerBoost` 文件夹复制到 `<Celeste>\Mods\`。
 - 反编译临时文件不要写进工作区（用 `%TEMP%`）。

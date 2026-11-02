@@ -33,9 +33,10 @@
         <Copy SourceFiles="$(OutputPath)\$(AssemblyName).pdb" DestinationFolder="..\bin" />
     </Target>
 
-    <Target Name="PackageMod" AfterTargets="CopyFiles" Inputs="$(ZippedFiles)" Outputs="..\VerticalCornerBoost.zip" Condition="'$(Configuration)' == 'Release'">
+    <Target Name="PackageMod" AfterTargets="CopyFiles" Condition="'$(Configuration)' == 'Release'">
+        <!-- 发布包不带 .pdb：省体积，也不把源码路径带出去 -->
         <ItemGroup>
-            <FilesToPackage Include="$(ZippedFiles)" />
+            <FilesToPackage Include="$(ZippedFiles)" Exclude="..\bin\**\*.pdb" />
         </ItemGroup>
         <PackageMod Files="@(FilesToPackage)" OutputPath="..\VerticalCornerBoost.zip" />
     </Target>
