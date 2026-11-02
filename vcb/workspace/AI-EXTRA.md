@@ -198,6 +198,50 @@ Speed.Y = target
   **不要**在创建控件时算一次颜色缓存下来，否则改完值颜色不会变。
 - `CustomSpeed` 输入框本身不标黄（它只是"速度"的另一种表示）；只有"地图给了速度、玩家又填了别的数"时才标黄。
 
+### 已知行为：墙顶有刺时不翻墙（**这是原版行为，与 Mod 无关**）
+
+**现象**：抓着墙往上爬，墙顶**没有**刺时会正常翻上去；墙顶**有**刺时翻不上去，
+但本 Mod 的加速仍然会生效（因为加速判定只看 `Solid` 几何，不看能不能翻越）。
+
+**这不是 Mod 的 bug，是原版 Celeste 的既有行为。** 机制如下（均已反编译核实）：
+
+1. `Celeste.Spikes` 是 `public class Spikes : Entity`，构造时执行 `Add(new LedgeBlocker());`
+   —— 尖刺**不是 `Solid`**，但它挂了一个 `LedgeBlocker` 组件。
+2. 原版攀爬上移分支（`Player.ClimbUpdate`，`Input.MoveY.Value == -1` 时）判定：
+   ```csharp
+   if (CollideCheck<Solid>(Position - Vector2.UnitY)
+       || (ClimbHopBlockedCheck() && SlipCheck(-1f)))
+   {
+       if (Speed.Y < 0f) Speed.Y = 0f;   // 把上移速度归零
+       num = 0f;
+       flag = true;                       // 本帧不爬
+   }
+   else if (SlipCheck()) { ClimbHop(); return 0; }
+   ```
+   读法（注意 `||` 的短路与括号）：
+
+   - 若 `CollideCheck<Solid>(Position - UnitY)`（头顶正上方有实心块）**或**
+     `(ClimbHopBlockedCheck() && SlipCheck(-1f))` 成立 → 清 `Speed.Y`、本帧不爬；
+   - 否则若 `SlipCheck()` → `ClimbHop()` 翻上去。
+
+   所以挡住翻越的是 `ClimbHopBlockedCheck()`（**尖刺走这条**），`SlipCheck` 本身只查 `Solid`、与尖刺无关；
+   两者是 `&&` 关系，缺一不可。
+3. `Player.ClimbHopBlockedCheck()` 会遍历 `Scene.Tracker.GetComponents<LedgeBlocker>()` 并调用
+   `HopBlockCheck(this)`；`LedgeBlocker.Blocking` 默认是 `true`，且
+   `HopBlockCheck` 里还有 `player.CollideCheck(Entity, player.Position + UnitX * Facing * 8f)`
+   —— 尖刺正好挂在墙顶，这个 8px 前探必定命中，于是返回 `true`。
+4. 结论：**墙顶有刺 → `ClimbHopBlockedCheck()` 为真 → 原版把上移速度清零、不调用 `ClimbHop()` → 翻不上去。**
+   这是原版给 mapper 的控制手段（墙顶放刺就是「别从这儿翻」），不是缺陷。
+
+**本 Mod 与它的关系**：
+
+- 本 Mod 的墙角判定只查 `CollideCheck<Solid>`，**看不到 `LedgeBlocker`**，所以「墙顶有刺」照样会给加速；
+  给了速度但因为上面第 4 条，角色上不去。表现就是「吃了加速但没翻过去」。
+- **用户明确表示不修改该行为**，也**不要**试图让 Mod 绕过 `LedgeBlocker`（那等于让 Mod 无视 mapper
+  用尖刺表达的「此处禁止翻越」意图，是越界）。
+
+**后续 Agent 请注意**：这不是待修的 bug。如果要改，先问用户。
+
 ### 地图触发器的语义（`VerticalCornerBoostTrigger`）
 
 - 三个字段都可以是"不改"：`enabled` / `requireGrab` 用 `leave`，`speed` 用 `0`。
