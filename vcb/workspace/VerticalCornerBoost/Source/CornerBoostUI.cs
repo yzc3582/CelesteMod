@@ -50,8 +50,16 @@ internal static class CornerBoostUI {
                   + ": " + VerticalCornerBoostModule.Settings.CustomSpeed,
             () => CornerBoostState.CustomSpeedColor);
         button.Pressed(() => {
+            // 这个按钮理论上只出现在 Mod 选项菜单（Overworld），但 SceneAs 失败时返回 null，
+            // 直接 .Goto() 会空引用崩溃。加一层判空，退化成“不可用”而不是崩游戏。
+            Overworld overworld = menu.SceneAs<Overworld>();
+            if (overworld == null) {
+                Logger.Warn("VerticalCornerBoost", "CustomSpeed: current scene is not Overworld, cannot open string input.");
+                return;
+            }
+
             Audio.Play("event:/ui/main/savefile_rename_start");
-            menu.SceneAs<Overworld>()
+            overworld
                 .Goto<OuiModOptionString>()
                 .Init<OuiModOptions>(
                     VerticalCornerBoostModule.Settings.CustomSpeed,
@@ -97,18 +105,57 @@ internal static class CornerBoostUI {
     }
 
     /// <summary>独立设置界面里的完整内容（暂停菜单入口按进去看到的就是这一套）。</summary>
+    /// <param name="inGame">游戏内（暂停界面）时为 true。目前这一套控件在游戏内也都可用，
+    /// 所以没有用它做禁用；保留参数是为了和 Mod 选项那边的签名一致。</param>
     public static void AddSettingsItems(TextMenu menu, bool inGame) {
         menu.Add(EnabledItem(Dialog.Clean("VCB_MENU_TOGGLE")));
         menu.Add(RequireGrabItem(Dialog.Clean("VCB_MENU_REQUIRE_GRAB")));
         menu.Add(PresetItem());
 
-        // 地图把速度钉死了的时候，滑块只能停在最近的档位，补一行把真实数值说清楚
-        if (CornerBoostState.MapValues.SpeedUp is float mapSpeed && !CornerBoostState.IsPlayerOverridingSpeed) {
-            menu.Add(new TextMenu.SubHeader(string.Format(Dialog.Clean("VCB_MENU_MAP_SPEED"), (int)Math.Round(mapSpeed))));
-        }
+        // 地图把速度钉死了的时候，滑块只能停在最近的档位，补一行把真实数值说清楚。
+        // 这一行必须**动态**：玩家在界面里改设置、或 flag 让地图覆盖生效/失效时，文字要跟着变，
+        // 不然会显示一个过时的数值。
+        menu.Add(new ColoredSubHeader(
+            () => CornerBoostState.MapValues.SpeedUp is float mapSpeed && !CornerBoostState.IsPlayerOverridingSpeed
+                ? string.Format(Dialog.Clean("VCB_MENU_MAP_SPEED"), (int)Math.Round(mapSpeed))
+                : ""));
 
         menu.Add(LimitCustomSpeedItem());
         menu.Add(ResetToDefaultItem(Dialog.Clean("VCB_MENU_RESET")));
+    }
+}
+
+/// <summary>
+/// 带动态文本的 SubHeader。用来显示“地图速度：xxx”这类只在特定状态才有意义的信息。
+///
+/// 两个必须的细节：
+/// - 文字每帧在 Render 里现算，条件不成立就置空（原版 Render 遇到空 Title 会跳过绘制）；
+/// - **Height() 必须恒定**：原版 `Height()` 是 `(Title 非空 ? 字高*0.6 : 0) + (TopPadding?48:0)`，
+///   文字一出现/消失，行高会相差十几像素，导致下面的菜单项整体跳一下。
+///   这里覆写成固定行高，保证布局永远不抖。
+/// </summary>
+internal sealed class ColoredSubHeader : TextMenu.SubHeader {
+    private readonly Func<string> text;
+
+    public ColoredSubHeader(Func<string> text) : base(text()) {
+        this.text = text;
+    }
+
+    public override float Height() {
+        // 固定用「一行字 + 上方留白」，与当前是否有文字无关
+        return ActiveFont.LineHeight * Scale + (TopPadding ? 48f : 0f);
+    }
+
+    public override void Update() {
+        base.Update();
+        // 每帧现算：flag 变了、玩家改了设置，这行字都要立刻跟上。
+        // 在 Update 里改（而不是 Render 里）——渲染期间重算布局不安全。
+        string next = text();
+        if (next != Title) {
+            Title = next;
+            // TextMenu.Width 是缓存的，只在 RecalculateSize() 里更新；文字增减要重算宽度。
+            Container?.RecalculateSize();
+        }
     }
 }
 
@@ -185,7 +232,13 @@ internal sealed class ColoredButton : TextMenu.Button {
     public override void Update() {
         base.Update();
         // 自定义速度是文本输入，改完回到菜单时要能看到新值
-        Label = label();
+        string next = label();
+        if (next != Label) {
+            Label = next;
+            // TextMenu.Width 是**缓存的**，只在 RecalculateSize() 里更新。
+            // 文字变长（120 -> 100000）却不重算，会越过菜单右边界。
+            Container?.RecalculateSize();
+        }
     }
 
     public override void Render(Vector2 position, bool highlighted) {

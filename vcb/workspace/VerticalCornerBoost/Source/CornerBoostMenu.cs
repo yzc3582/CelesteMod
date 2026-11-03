@@ -32,6 +32,14 @@ internal static class CornerBoostMenu {
         menu.Add(new TextMenu.Button(Dialog.Clean("VCB_MENU_BACK")).Pressed(back));
 
         void back() {
+            // 官方 CloseAndRun 会先 Focused=false 再关；这里必须照做。
+            // 否则这一帧里 OnESC/OnCancel/“返回”按钮可能都触发一次，
+            // 导致 level.Add(parentMenu) 被调用多次（父菜单在列表里出现重复条目）。
+            if (!menu.Focused) {
+                return;
+            }
+            menu.Focused = false;
+
             Audio.Play("event:/ui/main/button_back");
             VerticalCornerBoostModule.Instance.SaveSettings();
             menu.Close();
