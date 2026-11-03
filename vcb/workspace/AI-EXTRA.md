@@ -3,6 +3,11 @@
 > 本文件记录**已经反编译 `Celeste.dll` / 实测确认过**的事实、踩过的坑、当前待办与调参入口。
 > `AGENTS.md` 是需求与约束的权威；本文件是"怎么实现才不会翻车"的补充。
 > 冲突时以 `AGENTS.md` 为准，但请先看本文件的"反编译事实"一节——有些坑不看这里会重踩。
+>
+> **写这一节时请特别注意措辞**：本文件曾被外部 AI 阅读后误读出「Trigger 是房间级」
+> 「`CornerBoostState.Enabled` 是那个开关」「全局开关与 Trigger 是 AND/OR 关系」三个错误结论。
+> 凡是涉及**作用域 / 优先级 / 谁覆盖谁**的地方，一律用代码片段说话，不要只写自然语言。
+> 现在第 3 节「地图触发器的语义」已经按这个标准重写。
 
 ---
 
@@ -128,19 +133,34 @@ mapper 在编辑器里会以为它和那个既有技巧有关（比如以为能�
 判定顺序（`CornerBoostLogic.Update`，顺序本身有含义，别随意调换）：
 
 ```text
-Scene 不是 Level                     -> 清标记，return
-CornerBoostState.Prune(level)        -> 清掉别的房间/已销毁的地图条目
-Dead                                 -> 移除 revertOnDeath 条目 + 清标记，return
-不满足墙角几何                        -> 清标记，return   （离开墙角才重置，字典条目因此天然有界）
-!CornerBoostState.Enabled            -> 清标记，return   （关掉开关要清，否则重开后旧标记会挡住本次墙角）
-RequireGrab && !Input.GrabCheck      -> 清标记，return   （抓握状态，不是抓墙能力）
-Speed.Y >= 0                         -> return           （只处理向上运动，且不标记，之后上冲仍能触发）
-已标记                                -> return           （同一段墙角只处理一次）
+Scene 不是 Level                          -> 清 hasHoppedThisWall，return
+CornerBoostState.Prune(level)             -> 清掉「已销毁 / 属于别的 Level」的**地图条目**
+CornerBoostLogic.PruneStale(level)        -> 清掉「已不在本 Level」的 **Player 标记**
+Dead                                      -> 移除 revertOnDeath 条目 + 清标记，return
+不满足墙角几何                             -> 清标记，return   （离开墙角才重置）
+!CornerBoostState.Enabled                 -> 清标记，return   （关掉开关要清，否则重开后旧标记会挡住）
+RequireGrab && !Input.GrabCheck           -> 清标记，return   （松手后重抓可再次触发）
+Speed.Y >= 0                              -> **清标记**，return（下落中清标记，之后上冲能再触发）
+已标记                                     -> return           （同一段上冲只处理一次）
 标记 = true
-|Speed.Y - target| < 0.1             -> return           （原版这一帧已经给过了，不叠加）
-Speed.Y < target                     -> return           （CB/超级墙跳已更快，跟着原版 Math.Min 语义不降速）
+|Speed.Y - target| < 0.1                  -> return           （原版这一帧已经给过了，不叠加）
+Speed.Y < target                          -> return           （CB/超级墙跳已更快，跟着原版 Math.Min 语义不降速）
 Speed.Y = target
 ```
+
+**两套「条目」别搞混**（这是最容易误读的地方）：
+
+| 名字 | 存什么 | 什么时候清 |
+| --- | --- | --- |
+| `CornerBoostState.entries`（地图条目） | 每个**已进入的触发器**一条，带它给的覆盖值 | `OnLeave`（`revertOnLeave` 时）、`revertOnDeath`、`Prune` |
+| `CornerBoostLogic.hasHoppedThisWall`（玩家标记） | 每个 Player 一条，表示「这段上冲已处理」 | 判定顺序里各分支 `Remove(self)`、`PruneStale` |
+
+`Prune` 里的「别的房间」指的是**地图条目跨 Level 残留**（换房后旧 Level 的条目要清），
+**不是**说「一个房间只存一个开关」。详见下面的作用域说明。
+
+**为什么 `Speed.Y >= 0` 要清标记**：玩家拿到加速后开始下落，再次上冲时应当能再触发一次
+（已和用户确认这是期望行为）。早期版本这里不清标记，导致「下落再上冲」被 `ContainsKey` 挡住，是 bug。
+注入后 `Speed.Y = target`（负值），后续帧仍走 `Speed.Y < 0` 分支，所以**不会**在同一段上冲里重复注入。
 
 抓握判定为什么用 `Input.GrabCheck`：它是 `Settings.GrabMode` 的统一出口，
 按住（默认）= `Grab.Check`、反转 = `!Grab.Check`、切换 = `grabToggle`，
@@ -244,13 +264,81 @@ Speed.Y = target
 
 ### 地图触发器的语义（`VerticalCornerBoostTrigger`）
 
-- 三个字段都可以是"不改"：`enabled` / `requireGrab` 用 `leave`，`speed` 用 `0`。
-- `revertOnLeave`（默认 true）：离开触发器时撤销；为 false 时效果一直留到离开房间（换房/重进关会重建）。
-- `revertOnDeath`（默认 true）：死亡时撤销；`Player.Update` 里检测到 `Dead` 就移除这些条目。
+#### 1. 作用域：默认**碰撞箱级**，`revertOnLeave=false` 时升级为**房间级**
+
+`MapEntry.IsActive` **只看两件事**：`Owner` 还活着、`Level` 是当前房间。
+它**不检查玩家是否还站在箱子里**。所以作用域由 `revertOnLeave` 决定：
+
+| `revertOnLeave` | 条目何时消失 | 实际作用域 |
+| --- | --- | --- |
+| `true`（默认） | `OnLeave` 时 `RemoveEntry` | **碰撞箱级**——只在箱内生效 |
+| `false` | 只有死亡(`revertOnDeath`)/换房(`Prune`)才清 | **房间级**——离开箱子后整间房仍受影响 |
+
+所以 `width/height` **就是覆盖范围本身**，不是"辅助判定"。想让整间房生效有两种写法：
+
+- 把触发器拉满房间，或勾 `coversScreen`（`Added` 里把 Collider 换成 `Level.Bounds`）；
+- 或者就写 `revertOnLeave = false`（进一次箱子之后，整间房长期生效）。
+
+`Prune(level)` 每帧清理的是「`Owner` 已销毁」或「`Level` 不是当前房间」的**残留条目**，
+防止换房后旧条目继续影响（`IsActive` 也会二次校验 `Level == scene`）。
+
+#### 2. 优先级：三层，**地图默认什么都不改**
+
+```csharp
+// CornerBoostState 里三个生效值的统一形状
+玩家在游戏内改过该字段  ?  设置值
+                        :  (地图覆盖值 ?? 设置值)
+```
+
+具体到 `Enabled`：
+
+```csharp
+public static bool Enabled =>
+    Overrides.Contains(CornerBoostField.Enabled)
+        ? Settings.Enabled
+        : MapValues.Enabled ?? Settings.Enabled;
+```
+
+**这不是 AND / OR 关系，而是「覆盖」关系**：
+
+- 触发器字段默认 `leave`（= 不管），此时 `MapValues.Enabled` 是 `null`，退化为 `Settings.Enabled`
+  → **没放触发器的房间，行为和纯全局开关时完全一样**，不存在"必须有触发器才生效"。
+- 触发器写了 `enable` / `disable`，且玩家没在游戏内手动改过该字段 → **地图说了算**。
+- 玩家在游戏内用菜单改过该字段（`PlayerOverrides` 含它）→ **玩家说了算**，直到玩家把值改回与地图相同
+  （此时自动移出 `PlayerOverrides`，重新变回蓝色 = 地图值）。
+
+一句话：**全局设置是默认值，地图触发器是覆盖，玩家的游戏内改动优先级最高。**
+
+#### 3. 多触发器同房间：按「后进入者覆盖先进入者」合并
+
+`MapValues` 遍历所有 `IsActive` 的条目，**逐个字段**合并，后遍历到的覆盖前面的：
+
+```csharp
+foreach (MapEntry entry in entries) {
+    if (!entry.IsActive(scene)) continue;
+    if (entry.Values.Enabled.HasValue)    merged.Enabled = entry.Values.Enabled;
+    if (entry.Values.RequireGrab.HasValue) merged.RequireGrab = entry.Values.RequireGrab;
+    if (entry.Values.SpeedUp.HasValue)     merged.SpeedUp = entry.Values.SpeedUp;
+}
+```
+
+- 每个条目**只合并自己非 null 的字段**，所以「A 管 enabled、B 管 speed」这种组合是成立的。
+- 两条都管同一字段时，**列表里靠后的赢**（即后 `OnEnter` 的那条）。
+  这是「后进先出」的近似，没有做栈式撤销；`revertOnLeave` 只是把条目整条删掉。
+- 如果需要确定性的优先级，目前**没有显式 priority 字段**，靠进出顺序。改需求要另加字段。
+
+#### 4. 其它字段
+
+- `enabled` / `requireGrab` 用 `leave` / `enable` / `disable`；`leave` = 不管这个字段。
+- `speed` 用 `0` = 不改；正数 = 向上速度 px/s。注意这是**独立通道**，不经过 `Preset` 解析，
+  也不受 `LimitCustomSpeed` 的 1000 上限约束。
+- `revertOnLeave`（默认 true）：离开箱子时撤销，**这是"碰撞箱级"的来源**；
+  改成 false 就变成"进过一次之后整间房长期生效"（房间级）。详见上面第 1 条。
+- `revertOnDeath`（默认 true）：死亡时撤销。
 - `coversScreen`：把 Collider 扩到整间 `Level.Bounds`，等价于"进房间即生效"。
-- `flag` / `flagInverted`：非空时，只有 `Level.Session.GetFlag(flag)` 成立（`flagInverted` 取反）这条覆盖才算数；
-  **每帧现算**（`MapEntry.IsActive`），所以 flag 一变立刻生效，不需要进出触发器。
-- 覆盖值**只存在内存里**（`CornerBoostState` 的条目表），不写 Settings，所以不会污染玩家存档。
+- `flag` / `flagInverted`：非空时只有 `Level.Session.GetFlag(flag)` 成立（可反转）这条覆盖才生效；
+  **每帧现算**（`MapEntry.IsActive`），flag 一变立刻生效，不需要进出触发器。
+- 覆盖值**只存在内存里**（`CornerBoostState` 的条目表），不写 Settings，不污染存档。
 
 ### 玩家覆盖为什么放在 Session 里
 

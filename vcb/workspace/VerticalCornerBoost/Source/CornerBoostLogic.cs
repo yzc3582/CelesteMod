@@ -108,7 +108,10 @@ internal static class CornerBoostLogic {
         }
 
         if (self.Speed.Y >= 0f) {
-            // 只处理“正在向上运动”，下落中不标记，之后上冲仍有机会触发
+            // 只处理“正在向上运动”。这里**必须清标记**：
+            // 玩家给过加速后下落，再次上冲时应当能再触发一次（已和用户确认）。
+            // 之前这里不清标记，导致“下落再上冲”被 ContainsKey 挡住，是 bug。
+            hasHoppedThisWall.Remove(self);
             return;
         }
 
