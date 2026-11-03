@@ -1,6 +1,6 @@
 # VerticalCornerBoost
 
-一个反向移植 MMTGD 的蹭墙角起飞 Bug 的 mod，由 AI 生成，作者只负责测试，质量不保证。
+一个模仿 MMTGD 的蹭墙角起飞 Bug 的 mod（并未使用任何 MMTGD 相关资源，原先的“逆向移植”不准确），由 AI 生成，作者只负责测试，质量不保证。
 
 初版仅为娱乐性 mod，再版加入了 Trigger 等，我期待以该 mod 为 gp 的神人图（）
 
